@@ -205,11 +205,12 @@ def draw_industrial_workshop(self, x, y, sx, sy, lot_color):
     pipe_b = lerp_point(shop_base[1], shop_base[2], 0.72)
     pygame.draw.line(self.screen, (64, 69, 68), offset_point(pipe_a, 0, -5 * z), offset_point(pipe_b, 0, -8 * z), max(2, int(3 * z)))
 
-def draw_garbage_zone(self, x, y, sx, sy, lot_color):
+def draw_garbage_zone(self, x, y, sx, sy, lot_color, fill_ratio=0.0):
     z = self.camera.zoom
     self.draw_zone_lot(x, y, sx, sy, lot_color)
     lift = self.tile_lift(x, y)
     outline = (44, 47, 39)
+    fill_ratio = clamp(fill_ratio, 0.0, 1.0)
 
     def ground(wx, wy, y_offset=0):
         px, py = self.camera.world_to_screen(wx, wy)
@@ -220,15 +221,26 @@ def draw_garbage_zone(self, x, y, sx, sy, lot_color):
         pygame.draw.line(self.screen, (65, 58, 48), post_base, offset_point(post_base, 0, -10 * z), max(1, int(2 * z)))
     pygame.draw.line(self.screen, (92, 82, 63), ground(x - 0.42, y - 0.34, -7 * z), ground(x + 0.42, y - 0.34, -7 * z), max(1, int(2 * z)))
 
-    for cx, cy, color in ((-0.16, -0.02, (83, 91, 73)), (0.14, 0.16, (116, 103, 72)), (0.30, -0.12, (97, 101, 89))):
+    basin = self.iso_rect_poly(x, y, 1, 1, 0.20, base_lift=lift)
+    pygame.draw.polygon(self.screen, (76, 87, 67), basin, max(1, int(z)))
+    if fill_ratio <= 0.05:
+        return
+
+    heap_specs = ((-0.16, -0.02, (83, 91, 73)), (0.14, 0.16, (116, 103, 72)), (0.30, -0.12, (97, 101, 89)))
+    heap_count = max(1, min(len(heap_specs), int(fill_ratio * len(heap_specs) + 0.999)))
+    heap_scale = 0.45 + fill_ratio * 0.75
+    for cx, cy, color in heap_specs[:heap_count]:
         p = ground(x + cx, y + cy)
         heap = [
-            offset_point(p, -9 * z, 1 * z),
-            offset_point(p, 0, -9 * z),
-            offset_point(p, 10 * z, 2 * z),
-            offset_point(p, 3 * z, 6 * z),
+            offset_point(p, -9 * z * heap_scale, 1 * z),
+            offset_point(p, 0, -9 * z * heap_scale),
+            offset_point(p, 10 * z * heap_scale, 2 * z),
+            offset_point(p, 3 * z, 6 * z * heap_scale),
         ]
         draw_outlined_polygon(self, heap, color, outline)
+
+    if fill_ratio < 0.45:
+        return
 
     for wx, wy, color in ((x - 0.27, y + 0.27, (135, 74, 54)), (x + 0.07, y + 0.34, (65, 86, 102))):
         p = ground(wx, wy, -3 * z)
@@ -237,7 +249,12 @@ def draw_garbage_zone(self, x, y, sx, sy, lot_color):
         pygame.draw.rect(self.screen, outline, rect, max(1, int(z)))
         pygame.draw.ellipse(self.screen, darken(color, 1.25), rect.inflate(0, -5 * z))
 
-    for wx, wy in ((x - 0.34, y + 0.06), (x + 0.36, y + 0.30), (x + 0.04, y - 0.28)):
+    if fill_ratio < 0.70:
+        return
+
+    litter_specs = ((x - 0.34, y + 0.06), (x + 0.36, y + 0.30), (x + 0.04, y - 0.28))
+    litter_count = max(1, min(len(litter_specs), int(fill_ratio * len(litter_specs) + 0.999)))
+    for wx, wy in litter_specs[:litter_count]:
         p = ground(wx, wy, -2 * z)
         pygame.draw.circle(self.screen, (197, 190, 142), (int(p[0]), int(p[1])), max(1, int(2 * z)))
 

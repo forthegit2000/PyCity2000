@@ -25,7 +25,7 @@ Some civic and utility buildings reserve larger footprints: police, fire, clinic
 - Drag residential, commercial, or industrial zoning to preview an area; release to zone it
 - Right click: inspect a tile
 - `1`: road
-- `B`: bridge
+- `B`: rail
 - `2`: residential zone
 - `3`: commercial zone
 - `4`: industrial zone
@@ -45,6 +45,7 @@ Some civic and utility buildings reserve larger footprints: police, fire, clinic
 - `[` / `]`: adjust simulation speed
 - Top bar buttons: Pause, Play (`0.5x`), Fast (`1.5x`), Faster (`2.5x`)
 - Camera movement and rotation temporarily pause simulation, then restore the previous time state
+- `Ctrl+S` / `Ctrl+L`: save or load game
 - `T` / `Y`: lower / raise tax
 - `N`: new map
 - `Esc`: quit

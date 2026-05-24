@@ -8,7 +8,13 @@ from pathlib import Path
 
 import pygame
 
+import avatars
+from names import FIRST_NAME_DATA, FIRST_NAME_GENDERS, FIRST_NAMES, FIRST_NAMES_BY_GENDER, LAST_NAMES, gender_for_name
 import shapes
+import simulation_configs
+
+if __name__ == "__main__":
+    sys.modules.setdefault("pycity2000", sys.modules[__name__])
 
 
 SCREEN_W, SCREEN_H = 1280, 820
@@ -101,6 +107,10 @@ class MapMode(Enum):
     PIPES = "Water Pipe Map"
     TRAFFIC = "Traffic Map"
     LAND_VALUE = "Land Value Map"
+    POLLUTION = "Pollution Map"
+    CRIME = "Crime Map"
+    FIRE_RISK = "Fire Risk Map"
+    HEALTH = "Health Map"
 
 
 TOOL_KEYS = {
@@ -151,59 +161,16 @@ TOOL_BUILD = {
 }
 
 
-COST = {
-    Tool.ROAD: 8,
-    Tool.BRIDGE: 35,
-    Tool.RAIL: 12,
-    Tool.RAIL_BRIDGE: 45,
-    Tool.RAIL_CROSSING: 20,
-    Tool.RAIL_STATION: 950,
-    Tool.SEAPORT: 1600,
-    Tool.AIRPORT: 2200,
-    Tool.RES: 20,
-    Tool.COM: 24,
-    Tool.IND: 22,
-    Tool.GARBAGE: 14,
-    Tool.POWERLINE: 6,
-    Tool.WATER: 7,
-    Tool.WATER_PUMP: 350,
-    Tool.PARK: 60,
-    Tool.LARGE_PARK: 320,
-    Tool.POLICE: 450,
-    Tool.FIRE: 420,
-    Tool.CLINIC: 520,
-    Tool.SCHOOL: 650,
-    Tool.LIBRARY: 380,
-    Tool.STADIUM: 1800,
-    Tool.COAL: 1400,
-    Tool.SOLAR: 900,
-    Tool.BULLDOZE: 3,
-}
+def tool_keyed(values):
+    return {Tool[key]: value for key, value in values.items()}
 
 
-MAINTENANCE = {
-    BuildKind.ROAD: 0.02,
-    BuildKind.BRIDGE: 0.08,
-    BuildKind.RAIL: 0.03,
-    BuildKind.RAIL_BRIDGE: 0.10,
-    BuildKind.RAIL_CROSSING: 0.05,
-    BuildKind.RAIL_STATION: 2.8,
-    BuildKind.SEAPORT: 3.6,
-    BuildKind.AIRPORT: 5.2,
-    BuildKind.POWERLINE: 0.01,
-    BuildKind.WATER: 0.01,
-    BuildKind.WATER_PUMP: 0.8,
-    BuildKind.PARK: 0.18,
-    BuildKind.LARGE_PARK: 0.55,
-    BuildKind.POLICE: 2.4,
-    BuildKind.FIRE: 2.2,
-    BuildKind.CLINIC: 2.8,
-    BuildKind.SCHOOL: 3.2,
-    BuildKind.LIBRARY: 1.4,
-    BuildKind.STADIUM: 4.5,
-    BuildKind.COAL: 5.0,
-    BuildKind.SOLAR: 1.2,
-}
+def build_kind_keyed(values):
+    return {BuildKind[key]: value for key, value in values.items()}
+
+
+COST = tool_keyed(simulation_configs.COST)
+MAINTENANCE = build_kind_keyed(simulation_configs.MAINTENANCE)
 
 
 ZONE_KINDS = {BuildKind.RES, BuildKind.COM, BuildKind.IND, BuildKind.GARBAGE}
@@ -211,6 +178,16 @@ ROAD_KINDS = {BuildKind.ROAD, BuildKind.BRIDGE, BuildKind.RAIL_CROSSING}
 RAIL_KINDS = {BuildKind.RAIL, BuildKind.RAIL_BRIDGE, BuildKind.RAIL_CROSSING}
 RAIL_CONNECT_KINDS = RAIL_KINDS | {BuildKind.RAIL_STATION}
 NETWORK_KINDS = {BuildKind.ROAD, BuildKind.BRIDGE, BuildKind.RAIL_CROSSING, BuildKind.POWERLINE, BuildKind.WATER}
+REGISTRY_EXCLUDED_KINDS = {
+    BuildKind.EMPTY,
+    BuildKind.ROAD,
+    BuildKind.BRIDGE,
+    BuildKind.RAIL,
+    BuildKind.RAIL_BRIDGE,
+    BuildKind.RAIL_CROSSING,
+    BuildKind.POWERLINE,
+    BuildKind.WATER,
+}
 PATH_TOOLS = {Tool.ROAD, Tool.RAIL, Tool.POWERLINE, Tool.WATER}
 ZONE_TOOLS = {Tool.RES, Tool.COM, Tool.IND, Tool.GARBAGE}
 SERVICE_KINDS = {
@@ -229,6 +206,47 @@ SERVICE_KINDS = {
     BuildKind.COAL,
     BuildKind.SOLAR,
 }
+INSPECTOR_AVATAR_KINDS = {
+    BuildKind.PARK,
+    BuildKind.LARGE_PARK,
+    BuildKind.SCHOOL,
+    BuildKind.CLINIC,
+    BuildKind.POLICE,
+    BuildKind.FIRE,
+    BuildKind.LIBRARY,
+    BuildKind.STADIUM,
+    BuildKind.RAIL_STATION,
+    BuildKind.SEAPORT,
+    BuildKind.AIRPORT,
+    BuildKind.WATER_PUMP,
+    BuildKind.COAL,
+    BuildKind.SOLAR,
+}
+
+CIVIC_JOB_CAPACITY = build_kind_keyed(simulation_configs.CIVIC_JOB_CAPACITY)
+STUDENT_CAPACITY = build_kind_keyed(simulation_configs.STUDENT_CAPACITY)
+RESIDENT_CAPACITY_BY_LEVEL = dict(simulation_configs.RESIDENT_CAPACITY_BY_LEVEL)
+WORKING_AGE_MIN = simulation_configs.AGES["working_min"]
+WORKING_AGE_MAX = simulation_configs.AGES["working_max"]
+SCHOOL_AGE_MIN = simulation_configs.AGES["school_min"]
+SCHOOL_AGE_MAX = simulation_configs.AGES["school_max"]
+CITIZEN_POWER_USE = simulation_configs.CITIZEN_RESOURCE_USE["power"]
+CITIZEN_WATER_USE = simulation_configs.CITIZEN_RESOURCE_USE["water"]
+CITIZEN_GARBAGE_USE = simulation_configs.CITIZEN_RESOURCE_USE["garbage"]
+WORKPLACE_GARBAGE_PER_WORKER = build_kind_keyed(simulation_configs.WORKPLACE_GARBAGE_PER_WORKER)
+GARBAGE_ZONE_CAPACITY = simulation_configs.GARBAGE["zone_capacity"]
+GARBAGE_FILL_DECAY_RATE = simulation_configs.GARBAGE["fill_decay_rate"]
+EDUCATION_ABILITY_MIN = simulation_configs.EDUCATION["ability_min"]
+EDUCATION_ABILITY_MAX = simulation_configs.EDUCATION["ability_max"]
+MONTHLY_EDUCATION_GAIN = simulation_configs.EDUCATION["monthly_gain"]
+HEALTH_TARGET = simulation_configs.HEALTH["target"]
+BUILDING_OUTPUT_CAPACITY = build_kind_keyed(simulation_configs.BUILDING_OUTPUT_CAPACITY)
+TILE_SCORE = dict(simulation_configs.TILE_SCORE)
+TILE_SCORE_EFFECTS = build_kind_keyed(simulation_configs.TILE_SCORE_EFFECTS)
+TILE_SCORE_FIELDS = ("pollution", "land_value", "crime", "health", "education", "fire_risk")
+ZONE_GROWTH_BONUS = build_kind_keyed(simulation_configs.ZONE_GROWTH_BONUS)
+RESOURCE_SHORTAGE_PENALTY = dict(simulation_configs.RESOURCE_SHORTAGE_PENALTY)
+BUILDING_RESOURCE_USE = build_kind_keyed(simulation_configs.BUILDING_RESOURCE_USE)
 
 FOOTPRINTS = {
     BuildKind.EMPTY: (1, 1),
@@ -279,7 +297,7 @@ class Tile:
     crime: float = 0.0
     health: float = 0.0
     education: float = 0.0
-    age: int = 0
+    garbage_fill: float = 0.0
     fire_timer: int = 0
     origin: tuple[int, int] | None = None
     footprint: tuple[int, int] = (1, 1)
@@ -299,6 +317,153 @@ class Message:
 
 
 @dataclass
+class Citizen:
+    id: int
+    name: str = ""
+    gender: str = "m"
+    born: tuple[int, int, int] = (1, 1, 1900)
+    household_id: int | None = None
+    job_id: int | None = None
+    school_id: int | None = None
+    health: float = 70.0
+    education: float = 0.0
+    education_ability: float = 1.0
+    happiness: float = 50.0
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "gender": self.gender,
+            "born": self.born,
+            "household_id": self.household_id,
+            "job_id": self.job_id,
+            "school_id": self.school_id,
+            "health": self.health,
+            "education": self.education,
+            "education_ability": self.education_ability,
+            "happiness": self.happiness,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        citizen_id = data["id"]
+        name = data.get("name") or f"Citizen {citizen_id}"
+        return cls(
+            id=citizen_id,
+            name=name,
+            gender=data.get("gender") or gender_for_name(name),
+            born=tuple(data["born"]),
+            household_id=data.get("household_id"),
+            job_id=data.get("job_id"),
+            school_id=data.get("school_id"),
+            health=data.get("health", 70.0),
+            education=data.get("education", 0.0),
+            education_ability=data.get("education_ability", 1.0),
+            happiness=data.get("happiness", 50.0),
+        )
+
+
+@dataclass
+class Household:
+    id: int
+    home_building_id: int | None = None
+    citizen_ids: list[int] = field(default_factory=list)
+    income: float = 0.0
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "home_building_id": self.home_building_id,
+            "citizen_ids": self.citizen_ids,
+            "income": self.income,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            id=data["id"],
+            home_building_id=data.get("home_building_id"),
+            citizen_ids=list(data.get("citizen_ids", [])),
+            income=data.get("income", 0.0),
+        )
+
+
+@dataclass
+class BuildingInstance:
+    id: int
+    kind: BuildKind
+    origin: tuple[int, int]
+    footprint: tuple[int, int] = (1, 1)
+    level: int = 0
+    resident_capacity: int = 0
+    job_capacity: int = 0
+    student_capacity: int = 0
+    resident_ids: list[int] = field(default_factory=list)
+    worker_ids: list[int] = field(default_factory=list)
+    student_ids: list[int] = field(default_factory=list)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "kind": self.kind.name,
+            "origin": self.origin,
+            "footprint": self.footprint,
+            "level": self.level,
+            "resident_capacity": self.resident_capacity,
+            "job_capacity": self.job_capacity,
+            "student_capacity": self.student_capacity,
+            "resident_ids": self.resident_ids,
+            "worker_ids": self.worker_ids,
+            "student_ids": self.student_ids,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            id=data["id"],
+            kind=BuildKind[data["kind"]],
+            origin=tuple(data["origin"]),
+            footprint=tuple(data.get("footprint", (1, 1))),
+            level=data.get("level", 0),
+            resident_capacity=data.get("resident_capacity", 0),
+            job_capacity=data.get("job_capacity", 0),
+            student_capacity=data.get("student_capacity", 0),
+            resident_ids=list(data.get("resident_ids", [])),
+            worker_ids=list(data.get("worker_ids", [])),
+            student_ids=list(data.get("student_ids", [])),
+        )
+
+
+@dataclass
+class Trip:
+    citizen_id: int
+    from_building_id: int
+    to_building_id: int
+    purpose: str
+    distance: int
+
+    def to_dict(self):
+        return {
+            "citizen_id": self.citizen_id,
+            "from_building_id": self.from_building_id,
+            "to_building_id": self.to_building_id,
+            "purpose": self.purpose,
+            "distance": self.distance,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            citizen_id=data["citizen_id"],
+            from_building_id=data["from_building_id"],
+            to_building_id=data["to_building_id"],
+            purpose=data["purpose"],
+            distance=data["distance"],
+        )
+
+
+@dataclass
 class CityStats:
     population: int = 0
     jobs: int = 0
@@ -310,6 +475,8 @@ class CityStats:
     power_cap: int = 0
     water_used: int = 0
     water_cap: int = 0
+    garbage_used: float = 0.0
+    garbage_cap: float = 0.0
     income: float = 0.0
     expenses: float = 0.0
     mood: float = 50.0
@@ -335,6 +502,12 @@ class City:
     stats: CityStats = field(default_factory=CityStats)
     selected: tuple[int, int] | None = None
     messages: list[Message] = field(default_factory=list)
+    citizens: dict[int, Citizen] = field(default_factory=dict)
+    households: dict[int, Household] = field(default_factory=dict)
+    buildings: dict[int, BuildingInstance] = field(default_factory=dict)
+    trips: list[Trip] = field(default_factory=list)
+    traffic_loads: dict[tuple[int, int], float] = field(default_factory=dict)
+    next_sim_id: int = 1
     graphs: dict[str, list[float]] = field(default_factory=lambda: {
         "population": [],
         "money": [],
@@ -372,8 +545,458 @@ class City:
         self.disasters_enabled = True
         self.sim_speed = PLAY_SPEED
         self.stats = CityStats()
+        self.citizens = {}
+        self.households = {}
+        self.buildings = {}
+        self.trips = []
+        self.traffic_loads = {}
+        self.next_sim_id = 1
         self.messages = [Message("New charter approved. Build roads, zones, power, and water.", ACCENT, 9)]
         self.graphs = {"population": [], "money": [], "mood": [], "pollution": []}
+
+    def allocate_sim_id(self):
+        sim_id = self.next_sim_id
+        self.next_sim_id += 1
+        return sim_id
+
+    def building_resident_capacity(self, kind, level):
+        if kind == BuildKind.RES:
+            return RESIDENT_CAPACITY_BY_LEVEL.get(level, RESIDENT_CAPACITY_BY_LEVEL[max(RESIDENT_CAPACITY_BY_LEVEL)])
+        return 0
+
+    def building_job_capacity(self, kind, level):
+        if kind == BuildKind.COM:
+            return level * level * 5
+        if kind == BuildKind.IND:
+            return level * level * 14
+        return CIVIC_JOB_CAPACITY.get(kind, 0)
+
+    def building_student_capacity(self, kind, level):
+        return STUDENT_CAPACITY.get(kind, 0)
+
+    def citizen_age(self, citizen):
+        birth_month, birth_day, birth_year = citizen.born
+        age = self.year - birth_year
+        if (self.month, self.day) < (birth_month, birth_day):
+            age -= 1
+        return max(0, age)
+
+    def is_working_age(self, citizen):
+        return WORKING_AGE_MIN <= self.citizen_age(citizen) <= WORKING_AGE_MAX
+
+    def is_school_age(self, citizen):
+        return SCHOOL_AGE_MIN <= self.citizen_age(citizen) <= SCHOOL_AGE_MAX
+
+    def rebuild_building_registry(self):
+        existing_by_origin = {
+            building.origin: building
+            for building in self.buildings.values()
+        }
+        rebuilt = {}
+        for x, y, tile in self.footprint_origin_tiles():
+            if tile.build in REGISTRY_EXCLUDED_KINDS:
+                continue
+            previous = existing_by_origin.get((x, y))
+            if previous and previous.kind == tile.build:
+                building = previous
+                building.footprint = tile.footprint
+                building.level = tile.level
+            else:
+                building = BuildingInstance(
+                    id=self.allocate_sim_id(),
+                    kind=tile.build,
+                    origin=(x, y),
+                    footprint=tile.footprint,
+                    level=tile.level,
+                )
+            building.resident_capacity = self.building_resident_capacity(tile.build, tile.level)
+            building.job_capacity = self.building_job_capacity(tile.build, tile.level)
+            building.student_capacity = self.building_student_capacity(tile.build, tile.level)
+            building.resident_ids = building.resident_ids[: building.resident_capacity]
+            building.worker_ids = building.worker_ids[: building.job_capacity]
+            building.student_ids = building.student_ids[: building.student_capacity]
+            rebuilt[building.id] = building
+        self.buildings = rebuilt
+        self.sync_residential_population()
+        self.sync_work_and_school_assignments()
+
+    def household_seed(self, home_building_id, household_index=0):
+        return home_building_id * 1009 + household_index * 9176 + self.year * 37
+
+    def household_last_name(self, home_building_id, household_index=0):
+        seed = self.household_seed(home_building_id, household_index)
+        return LAST_NAMES[self.deterministic_int(seed, 81, 0, len(LAST_NAMES) - 1)]
+
+    def deterministic_value(self, seed, salt):
+        value = (seed ^ (salt * 0x9E3779B1)) & 0xFFFFFFFF
+        value ^= value >> 16
+        value = (value * 0x7FEB352D) & 0xFFFFFFFF
+        value ^= value >> 15
+        value = (value * 0x846CA68B) & 0xFFFFFFFF
+        value ^= value >> 16
+        return value
+
+    def deterministic_ratio(self, seed, salt):
+        return self.deterministic_value(seed, salt) / 0x100000000
+
+    def deterministic_int(self, seed, salt, lo, hi):
+        return lo + self.deterministic_value(seed, salt) % (hi - lo + 1)
+
+    def generated_household_members(self, home_building_id, max_size, household_index=0):
+        seed = self.household_seed(home_building_id, household_index)
+        members = []
+        if self.deterministic_ratio(seed, 1) < 0.72 and max_size >= 2:
+            adult_a_age = self.deterministic_int(seed, 2, 24, 48)
+            adult_b_age = clamp(adult_a_age + self.deterministic_int(seed, 3, -4, 5), 22, 52)
+            members.extend((("m", adult_a_age), ("f", adult_b_age)))
+            remaining = max_size - len(members)
+            if remaining > 0:
+                child_roll = self.deterministic_ratio(seed, 4)
+                child_count = 0
+                if child_roll < 0.42:
+                    child_count = 1
+                elif child_roll < 0.70:
+                    child_count = 2
+                elif child_roll < 0.78:
+                    child_count = 3
+                for i in range(min(remaining, child_count)):
+                    gender = "m" if self.deterministic_ratio(seed, 10 + i) < 0.5 else "f"
+                    age = self.deterministic_int(seed, 20 + i, 1, 17)
+                    members.append((gender, age))
+        else:
+            gender = "m" if self.deterministic_ratio(seed, 5) < 0.5 else "f"
+            age = self.deterministic_int(seed, 6, 21, 74)
+            members.append((gender, age))
+        return members[:max_size]
+
+    def residential_population_target(self, building):
+        if building.level <= 1:
+            return len(self.generated_household_members(building.id, building.resident_capacity))
+        return building.resident_capacity
+
+    def create_household(self, home_building_id, max_size, household_index=0):
+        household_id = self.allocate_sim_id()
+        citizen_ids = []
+        last_name = self.household_last_name(home_building_id, household_index)
+        for gender, age in self.generated_household_members(home_building_id, max_size, household_index):
+            citizen_id = self.allocate_sim_id()
+            self.citizens[citizen_id] = Citizen(
+                id=citizen_id,
+                name=self.citizen_name(citizen_id, gender, last_name),
+                gender=gender,
+                born=self.citizen_birth_date(age),
+                education_ability=self.citizen_education_ability(citizen_id),
+                household_id=household_id,
+            )
+            citizen_ids.append(citizen_id)
+        self.households[household_id] = Household(
+            id=household_id,
+            home_building_id=home_building_id,
+            citizen_ids=citizen_ids,
+        )
+        return household_id
+
+    def remove_household(self, household_id):
+        household = self.households.pop(household_id, None)
+        if not household:
+            return
+        for citizen_id in household.citizen_ids:
+            self.citizens.pop(citizen_id, None)
+
+    def remove_citizen_from_household(self, citizen_id):
+        citizen = self.citizens.pop(citizen_id, None)
+        if not citizen or citizen.household_id not in self.households:
+            return
+        household = self.households[citizen.household_id]
+        household.citizen_ids = [cid for cid in household.citizen_ids if cid != citizen_id]
+        if not household.citizen_ids:
+            self.households.pop(household.id, None)
+
+    def sync_residential_population(self):
+        building_ids = set(self.buildings)
+        valid_residents = set()
+        for building in self.buildings.values():
+            if building.kind != BuildKind.RES:
+                continue
+            target = self.residential_population_target(building)
+            building.resident_ids = [
+                cid
+                for cid in building.resident_ids
+                if cid in self.citizens and self.citizens[cid].household_id in self.households
+            ][:target]
+            valid_residents.update(building.resident_ids)
+
+        for household_id, household in list(self.households.items()):
+            if household.home_building_id not in building_ids:
+                self.remove_household(household_id)
+                continue
+            household.citizen_ids = [cid for cid in household.citizen_ids if cid in self.citizens]
+            if not household.citizen_ids:
+                self.households.pop(household_id, None)
+
+        for citizen_id in list(self.citizens):
+            citizen = self.citizens[citizen_id]
+            if citizen.household_id not in self.households or citizen_id not in valid_residents:
+                self.remove_citizen_from_household(citizen_id)
+
+        for building in self.buildings.values():
+            if building.kind != BuildKind.RES:
+                continue
+            target = self.residential_population_target(building)
+            household_index = len({
+                self.citizens[cid].household_id
+                for cid in building.resident_ids
+                if cid in self.citizens
+            })
+            while len(building.resident_ids) < target:
+                open_slots = target - len(building.resident_ids)
+                household_id = self.create_household(building.id, min(4, open_slots), household_index)
+                resident_ids = self.households[household_id].citizen_ids
+                building.resident_ids.extend(resident_ids)
+                household_index += 1
+
+    def sorted_buildings_with_capacity(self, attr):
+        return sorted(
+            (building for building in self.buildings.values() if getattr(building, attr) > 0),
+            key=lambda building: (building.origin[0], building.origin[1], building.id),
+        )
+
+    def commercial_shop_output(self, building):
+        if not building or building.kind != BuildKind.COM:
+            return 0.0
+        return building.level * building.level * 8 * self.zone_fill_ratio(building, "worker_ids", "job_capacity")
+
+    def commercial_shop_gap(self):
+        needed = len(self.citizens) * 0.18
+        shops = sum(self.commercial_shop_output(building) for building in self.buildings.values())
+        return max(0.0, (needed - shops) / max(1.0, needed))
+
+    def industrial_job_gap(self):
+        working_age = len(self.working_age_citizens())
+        needed = working_age * 0.55
+        capacity = sum(building.job_capacity for building in self.buildings.values() if building.kind == BuildKind.IND)
+        return max(0.0, (needed - capacity) / max(1.0, needed))
+
+    def worker_assignment_priority(self, building):
+        if building.kind == BuildKind.COM:
+            return 45 + self.commercial_shop_gap() * 160 + self.commercial_customer_support() * 25
+        if building.kind == BuildKind.IND:
+            return 45 + self.industrial_job_gap() * 120 + self.industrial_labor_support() * 25
+        return 50
+
+    def worker_assignment_buildings(self, buildings):
+        sector_rank = {BuildKind.COM: 0, BuildKind.IND: 1}
+        return sorted(
+            buildings,
+            key=lambda building: (
+                -self.worker_assignment_priority(building),
+                sector_rank.get(building.kind, 2),
+                building.origin[0],
+                building.origin[1],
+                building.id,
+            ),
+        )
+
+    def sync_work_assignments(self):
+        job_buildings = self.worker_assignment_buildings(self.sorted_buildings_with_capacity("job_capacity"))
+
+        for building in job_buildings:
+            building.worker_ids = []
+
+        for citizen in self.citizens.values():
+            citizen.job_id = None
+
+        for citizen_id in sorted(self.citizens):
+            citizen = self.citizens[citizen_id]
+            if not self.is_working_age(citizen) or citizen.job_id is not None:
+                continue
+            for building in job_buildings:
+                if len(building.worker_ids) < building.job_capacity:
+                    building.worker_ids.append(citizen_id)
+                    citizen.job_id = building.id
+                    break
+
+    def sync_school_assignments(self):
+        school_buildings = self.sorted_buildings_with_capacity("student_capacity")
+        valid_school_ids = {building.id for building in school_buildings}
+        assigned = set()
+
+        for building in school_buildings:
+            kept = []
+            for citizen_id in building.student_ids:
+                citizen = self.citizens.get(citizen_id)
+                if not citizen or not self.is_school_age(citizen) or citizen.school_id != building.id or citizen_id in assigned:
+                    continue
+                kept.append(citizen_id)
+                assigned.add(citizen_id)
+                if len(kept) >= building.student_capacity:
+                    break
+            building.student_ids = kept
+
+        for citizen in self.citizens.values():
+            if not self.is_school_age(citizen) or citizen.school_id not in valid_school_ids or citizen.id not in assigned:
+                citizen.school_id = None
+
+        for citizen_id in sorted(self.citizens):
+            citizen = self.citizens[citizen_id]
+            if not self.is_school_age(citizen) or citizen.school_id is not None:
+                continue
+            for building in school_buildings:
+                if len(building.student_ids) < building.student_capacity:
+                    building.student_ids.append(citizen_id)
+                    citizen.school_id = building.id
+                    assigned.add(citizen_id)
+                    break
+
+    def sync_work_and_school_assignments(self):
+        self.sync_work_assignments()
+        self.sync_school_assignments()
+        self.recompute_trips()
+
+    def working_age_citizens(self):
+        return [citizen for citizen in self.citizens.values() if self.is_working_age(citizen)]
+
+    def school_age_citizens(self):
+        return [citizen for citizen in self.citizens.values() if self.is_school_age(citizen)]
+
+    def building_at_origin(self, origin):
+        for building in self.buildings.values():
+            if building.origin == origin:
+                return building
+        return None
+
+    def citizen_name(self, citizen_id, gender=None, last_name=None):
+        first_names = FIRST_NAMES_BY_GENDER.get(gender, FIRST_NAMES)
+        first = first_names[citizen_id % len(first_names)]
+        last = last_name or LAST_NAMES[(citizen_id // len(FIRST_NAMES)) % len(LAST_NAMES)]
+        return f"{first} {last}"
+
+    def citizen_gender(self, citizen_id):
+        first = FIRST_NAMES[citizen_id % len(FIRST_NAMES)]
+        return FIRST_NAME_GENDERS[first]
+
+    def citizen_birth_date(self, age):
+        return self.month, self.day, max(1, self.year - age)
+
+    def citizen_education_ability(self, citizen_id):
+        steps = 20
+        ratio = ((citizen_id * 37) % (steps + 1)) / steps
+        return round(EDUCATION_ABILITY_MIN + (EDUCATION_ABILITY_MAX - EDUCATION_ABILITY_MIN) * ratio, 2)
+
+    def format_date(self, date):
+        month, day, year = date
+        return f"{month:02d}/{day:02d}/{year}"
+
+    def building_resource_use(self, building):
+        base_power, base_water, base_garbage = BUILDING_RESOURCE_USE.get(building.kind, (0, 0, 0))
+        if building.kind == BuildKind.COM:
+            workers = sum(1 for citizen_id in building.worker_ids if citizen_id in self.citizens)
+            return (
+                building.job_capacity,
+                max(1, math.ceil(building.job_capacity * 0.6)),
+                workers * WORKPLACE_GARBAGE_PER_WORKER[BuildKind.COM],
+            )
+        if building.kind == BuildKind.IND:
+            workers = sum(1 for citizen_id in building.worker_ids if citizen_id in self.citizens)
+            return (
+                building.job_capacity * 2,
+                math.ceil(building.job_capacity * 0.7),
+                workers * WORKPLACE_GARBAGE_PER_WORKER[BuildKind.IND],
+            )
+        return base_power, base_water, base_garbage
+
+    def resource_usage(self):
+        power_used = len(self.citizens) * CITIZEN_POWER_USE
+        water_used = len(self.citizens) * CITIZEN_WATER_USE
+        garbage_used = len(self.citizens) * CITIZEN_GARBAGE_USE
+        garbage_cap = 0
+        for building in self.buildings.values():
+            power, water, garbage = self.building_resource_use(building)
+            power_used += power
+            water_used += water
+            garbage_used += garbage
+            if building.kind == BuildKind.GARBAGE:
+                tile = self.tiles[building.origin[0]][building.origin[1]]
+                garbage_cap += max(0.0, GARBAGE_ZONE_CAPACITY - tile.garbage_fill)
+        return power_used, water_used, garbage_used, garbage_cap
+
+    def citizen_home_building_id(self, citizen):
+        household = self.households.get(citizen.household_id)
+        return household.home_building_id if household else None
+
+    def building_distance(self, from_building_id, to_building_id):
+        start = self.buildings[from_building_id].origin
+        end = self.buildings[to_building_id].origin
+        return abs(start[0] - end[0]) + abs(start[1] - end[1])
+
+    def building_road_access_tiles(self, building_id, radius=1):
+        building = self.buildings.get(building_id)
+        if not building:
+            return []
+        roads = set()
+        for tx, ty in self.building_tiles(*building.origin):
+            for nx, ny, _ in self.neighbors_radius(tx, ty, radius):
+                if self.tiles[nx][ny].build in ROAD_KINDS:
+                    roads.add((nx, ny))
+        return sorted(roads)
+
+    def road_path_between_buildings(self, from_building_id, to_building_id):
+        starts = self.building_road_access_tiles(from_building_id)
+        goals = set(self.building_road_access_tiles(to_building_id))
+        if not starts or not goals:
+            return []
+        queue = list(starts)
+        parents = {start: None for start in starts}
+        idx = 0
+        while idx < len(queue):
+            current = queue[idx]
+            idx += 1
+            if current in goals:
+                path = []
+                while current is not None:
+                    path.append(current)
+                    current = parents[current]
+                return list(reversed(path))
+            x, y = current
+            for nx, ny in self.neighbors4(x, y):
+                if (nx, ny) in parents or self.tiles[nx][ny].build not in ROAD_KINDS:
+                    continue
+                parents[(nx, ny)] = current
+                queue.append((nx, ny))
+        return []
+
+    def trip_distance_and_route(self, from_building_id, to_building_id):
+        route = self.road_path_between_buildings(from_building_id, to_building_id)
+        if route:
+            return len(route), route
+        return max(1, self.building_distance(from_building_id, to_building_id) * 3), []
+
+    def add_trip_traffic(self, route):
+        for x, y in route:
+            self.traffic_loads[(x, y)] = self.traffic_loads.get((x, y), 0.0) + 1.0
+
+    def recompute_trips(self):
+        trips = []
+        self.traffic_loads = {}
+        for citizen_id in sorted(self.citizens):
+            citizen = self.citizens[citizen_id]
+            home_id = self.citizen_home_building_id(citizen)
+            if home_id not in self.buildings:
+                continue
+            for purpose, destination_id in (("work", citizen.job_id), ("school", citizen.school_id)):
+                if destination_id not in self.buildings:
+                    continue
+                distance, route = self.trip_distance_and_route(home_id, destination_id)
+                trip = Trip(
+                    citizen_id=citizen_id,
+                    from_building_id=home_id,
+                    to_building_id=destination_id,
+                    purpose=purpose,
+                    distance=distance,
+                )
+                trips.append(trip)
+                self.add_trip_traffic(route)
+        self.trips = trips
 
     def to_dict(self):
         return {
@@ -389,6 +1012,11 @@ class City:
             "disasters_enabled": self.disasters_enabled,
             "tick_accum": self.tick_accum,
             "selected": self.selected,
+            "citizens": [self.citizens[cid].to_dict() for cid in sorted(self.citizens)],
+            "households": [self.households[hid].to_dict() for hid in sorted(self.households)],
+            "buildings": [self.buildings[bid].to_dict() for bid in sorted(self.buildings)],
+            "trips": [trip.to_dict() for trip in self.trips],
+            "next_sim_id": self.next_sim_id,
             "graphs": self.graphs,
             "tiles": [[self.tile_to_dict(self.tiles[x][y]) for y in range(self.height)] for x in range(self.width)],
         }
@@ -401,7 +1029,7 @@ class City:
             "pipe": tile.pipe,
             "build": tile.build.name,
             "level": tile.level,
-            "age": tile.age,
+            "garbage_fill": tile.garbage_fill,
             "fire_timer": tile.fire_timer,
             "origin": tile.origin,
             "footprint": tile.footprint,
@@ -421,8 +1049,16 @@ class City:
         city.tick_accum = data.get("tick_accum", 0.0)
         city.selected = tuple(data["selected"]) if data.get("selected") else None
         city.graphs = data.get("graphs", {"population": [], "money": [], "mood": [], "pollution": []})
+        city.citizens = {citizen.id: citizen for citizen in (Citizen.from_dict(item) for item in data.get("citizens", []))}
+        city.households = {household.id: household for household in (Household.from_dict(item) for item in data.get("households", []))}
+        city.buildings = {building.id: building for building in (BuildingInstance.from_dict(item) for item in data.get("buildings", []))}
+        city.trips = [Trip.from_dict(item) for item in data.get("trips", [])]
+        city.traffic_loads = {}
+        highest_id = max([0, *city.citizens, *city.households, *city.buildings])
+        city.next_sim_id = max(data.get("next_sim_id", 1), highest_id + 1)
         city.tiles = [[cls.tile_from_dict(data["tiles"][x][y]) for y in range(city.height)] for x in range(city.width)]
         city.messages = []
+        city.rebuild_building_registry()
         city.recompute_networks()
         city.recompute_tile_scores()
         city.recompute_stats()
@@ -437,7 +1073,7 @@ class City:
             pipe=data.get("pipe", False),
             build=BuildKind[data["build"]],
             level=data["level"],
-            age=data.get("age", 0),
+            garbage_fill=data.get("garbage_fill", 0.0),
             fire_timer=data.get("fire_timer", 0),
             origin=tuple(data["origin"]) if data.get("origin") else None,
             footprint=tuple(data.get("footprint", (1, 1))),
@@ -518,6 +1154,14 @@ class City:
     def pump_has_water_neighbor(self, x, y):
         return any(self.tiles[nx][ny].water for nx, ny in self.neighbors4(x, y))
 
+    def water_pump_capacity(self, x, y):
+        if not self.pump_has_water_neighbor(x, y):
+            return 0
+        return BUILDING_OUTPUT_CAPACITY[BuildKind.WATER_PUMP]["water"]
+
+    def power_source_capacity(self, kind):
+        return BUILDING_OUTPUT_CAPACITY.get(kind, {}).get("power", 0)
+
     def building_boundary(self, x, y):
         tiles = set(self.building_tiles(x, y))
         for tx, ty in tiles:
@@ -530,6 +1174,8 @@ class City:
             return False, "Outside map"
         tile = self.tiles[x][y]
         if tool == Tool.BULLDOZE:
+            if tile.build == BuildKind.GARBAGE:
+                return False, "Garbage zones cannot be bulldozed"
             return tile.build != BuildKind.EMPTY or tile.trees or tile.pipe, "Nothing to clear"
         kind = TOOL_BUILD[tool]
         if tool in {Tool.BRIDGE, Tool.RAIL_BRIDGE}:
@@ -605,6 +1251,7 @@ class City:
                 target.fire_timer = 0
                 target.origin = None
                 target.footprint = (1, 1)
+                target.garbage_fill = 0.0
             self.add_message(f"Cleared tile for ${price}.", MUTED, 3)
         elif tool == Tool.WATER:
             tile.pipe = True
@@ -616,14 +1263,15 @@ class City:
                 target = self.tiles[tx][ty]
                 target.build = kind
                 target.level = 0
-                target.age = 0
                 target.trees = False
                 target.fire_timer = 0
                 target.origin = (x, y)
                 target.footprint = footprint
+                target.garbage_fill = 0.0
                 if kind in ZONE_KINDS:
                     target.level = 1
             self.add_message(f"Built {tool.value} for ${price}.", TEXT, 3)
+        self.rebuild_building_registry()
         self.recompute_networks()
         self.recompute_stats()
 
@@ -649,13 +1297,14 @@ class City:
                 continue
             tile.build = kind
             tile.level = 0
-            tile.age = 0
             tile.trees = False
             tile.fire_timer = 0
             tile.origin = (x, y)
             tile.footprint = FOOTPRINTS[kind]
+            tile.garbage_fill = 0.0
             built += 1
         self.add_message(f"Built {built} path tiles for ${total_cost}.", TEXT, 4)
+        self.rebuild_building_registry()
         self.recompute_networks()
         self.recompute_stats()
 
@@ -673,13 +1322,14 @@ class City:
             tile = self.tiles[x][y]
             tile.build = kind
             tile.level = 1
-            tile.age = 0
             tile.trees = False
             tile.fire_timer = 0
             tile.origin = (x, y)
             tile.footprint = FOOTPRINTS[kind]
+            tile.garbage_fill = 0.0
             built += 1
         self.add_message(f"Zoned {built} tiles for ${total_cost}.", TEXT, 4)
+        self.rebuild_building_registry()
         self.recompute_networks()
         self.recompute_stats()
 
@@ -697,6 +1347,7 @@ class City:
             tile.build = BuildKind.BURNING
             tile.fire_timer = timer
             tile.level = 0
+        self.rebuild_building_registry()
 
     def trigger_fire(self):
         if not self.disasters_enabled:
@@ -739,6 +1390,12 @@ class City:
         self.grow_city()
         self.update_fires()
         self.recompute_stats()
+        self.update_landfills()
+        self.recompute_tile_scores()
+        self.recompute_stats()
+        self.update_citizen_health()
+        self.update_citizen_education()
+        self.recompute_stats()
         self.monthly_budget()
         self.record_graphs()
 
@@ -766,6 +1423,167 @@ class City:
         elif income < expenses:
             self.add_message("Monthly budget is negative.", WARN, 6)
 
+    def garbage_tiles(self):
+        for x, y, tile in self.footprint_origin_tiles():
+            if tile.build == BuildKind.GARBAGE:
+                yield x, y, tile
+
+    def landfill_garbage_generated(self):
+        garbage = len(self.citizens) * CITIZEN_GARBAGE_USE
+        for building in self.buildings.values():
+            if building.kind == BuildKind.GARBAGE:
+                continue
+            _, _, building_garbage = self.building_resource_use(building)
+            garbage += building_garbage
+        return garbage
+
+    def update_landfills(self):
+        garbage_tiles = list(self.garbage_tiles())
+        total_fill = sum(tile.garbage_fill for _, _, tile in garbage_tiles)
+        total_fill = max(0.0, total_fill * (1.0 - GARBAGE_FILL_DECAY_RATE))
+        total_fill += self.landfill_garbage_generated()
+        if total_fill < 0.05:
+            total_fill = 0.0
+
+        remaining = total_fill
+        ordered_tiles = sorted(
+            garbage_tiles,
+            key=lambda item: (item[2].garbage_fill <= 0, -item[2].garbage_fill, item[0], item[1]),
+        )
+        for _, _, tile in ordered_tiles:
+            accepted = min(GARBAGE_ZONE_CAPACITY, remaining)
+            tile.garbage_fill = accepted
+            remaining -= accepted
+
+    def school_trip_distance(self, citizen_id):
+        for trip in self.trips:
+            if trip.citizen_id == citizen_id and trip.purpose == "school":
+                return trip.distance
+        return 0
+
+    def commute_distance(self, citizen_id):
+        return sum(trip.distance for trip in self.trips if trip.citizen_id == citizen_id)
+
+    def citizen_age_vulnerability(self, citizen):
+        age = self.citizen_age(citizen)
+        if age < 5:
+            return 1.25
+        if age <= 20:
+            return 1.10
+        if age <= 64:
+            return 1.0
+        elder_years = age - 65
+        return 1.15 + elder_years ** 2 * 0.002 + elder_years ** 3 * 0.00007
+
+    def clinic_coverage(self, origin):
+        best = 0.0
+        for nx, ny, distance in self.neighbors_radius(origin[0], origin[1], 8):
+            tile = self.tiles[nx][ny]
+            if tile.build == BuildKind.CLINIC and tile.is_origin(nx, ny):
+                best = max(best, (8 - distance) / 8)
+        return best
+
+    def police_coverage(self, origin):
+        best = 0.0
+        for nx, ny, distance in self.neighbors_radius(origin[0], origin[1], 8):
+            tile = self.tiles[nx][ny]
+            if tile.build == BuildKind.POLICE and tile.is_origin(nx, ny):
+                best = max(best, (8 - distance) / 8)
+        return best
+
+    def fire_coverage(self, origin):
+        best = 0.0
+        for nx, ny, distance in self.neighbors_radius(origin[0], origin[1], 8):
+            tile = self.tiles[nx][ny]
+            if tile.build == BuildKind.FIRE and tile.is_origin(nx, ny):
+                best = max(best, (8 - distance) / 8)
+        return best
+
+    def library_coverage(self, origin):
+        best = 0.0
+        for nx, ny, distance in self.neighbors_radius(origin[0], origin[1], 8):
+            tile = self.tiles[nx][ny]
+            if tile.build == BuildKind.LIBRARY and tile.is_origin(nx, ny):
+                best = max(best, (8 - distance) / 8)
+        return best
+
+    def stadium_coverage(self, origin):
+        best = 0.0
+        for nx, ny, distance in self.neighbors_radius(origin[0], origin[1], 8):
+            tile = self.tiles[nx][ny]
+            if tile.build == BuildKind.STADIUM and tile.is_origin(nx, ny):
+                best = max(best, (8 - distance) / 8)
+        return best
+
+    def health_delta(self, citizen):
+        home_id = self.citizen_home_building_id(citizen)
+        if home_id not in self.buildings:
+            return 0.0
+        home = self.buildings[home_id]
+        home_tile = self.tiles[home.origin[0]][home.origin[1]]
+        positive = (HEALTH_TARGET - citizen.health) * 0.03
+        positive += self.clinic_coverage(home.origin) * 1.2
+        positive += (home_tile.health - 50) / 80
+
+        negative = 0.0
+        if not home_tile.watered:
+            negative += 0.8
+        if not home_tile.powered:
+            negative += 0.4
+        negative += home_tile.pollution / 80
+        negative += home_tile.crime / 160
+        if self.stats.garbage_used > self.stats.garbage_cap:
+            negative += 0.8
+        negative += self.commute_distance(citizen.id) / 80
+        negative *= self.citizen_age_vulnerability(citizen)
+        return positive - negative
+
+    def update_citizen_health(self):
+        dead_ids = [citizen.id for citizen in self.citizens.values() if citizen.health <= 0]
+        for citizen_id in dead_ids:
+            self.remove_citizen_from_household(citizen_id)
+        for citizen in list(self.citizens.values()):
+            citizen.health = clamp(citizen.health + self.health_delta(citizen), 0, 100)
+        dead_ids.extend(citizen.id for citizen in self.citizens.values() if citizen.health <= 0)
+        for citizen_id in dead_ids:
+            self.remove_citizen_from_household(citizen_id)
+        if dead_ids:
+            self.rebuild_building_registry()
+            count = len(dead_ids)
+            self.add_message(f"{count} citizen{'s' if count != 1 else ''} died from poor health.", BAD, 7)
+
+    def education_gain(self, citizen):
+        home_id = self.citizen_home_building_id(citizen)
+        school_id = citizen.school_id
+        if home_id not in self.buildings or school_id not in self.buildings:
+            return 0.0
+
+        home = self.buildings[home_id]
+        school = self.buildings[school_id]
+        home_tile = self.tiles[home.origin[0]][home.origin[1]]
+        school_tile = self.tiles[school.origin[0]][school.origin[1]]
+        school_quality = clamp(0.60 + school_tile.education / 100.0 * 0.80, 0.60, 1.40)
+        health_factor = clamp(0.50 + citizen.health / 100.0 * 0.70, 0.50, 1.20)
+        commute_factor = clamp(1.08 - self.school_trip_distance(citizen.id) / 45.0, 0.50, 1.08)
+        utility_factor = 1.0
+        for tile in (home_tile, school_tile):
+            if not tile.watered:
+                utility_factor -= 0.12
+            if not tile.powered:
+                utility_factor -= 0.10
+        if self.stats.garbage_used > self.stats.garbage_cap:
+            utility_factor -= 0.10
+        utility_factor = clamp(utility_factor, 0.45, 1.0)
+        environment_factor = clamp(1.0 - (home_tile.pollution + school_tile.pollution) / 260.0 - (home_tile.crime + school_tile.crime) / 360.0, 0.45, 1.0)
+        return MONTHLY_EDUCATION_GAIN * citizen.education_ability * school_quality * health_factor * commute_factor * utility_factor * environment_factor
+
+    def update_citizen_education(self):
+        self.sync_work_and_school_assignments()
+        for citizen in self.citizens.values():
+            if not self.is_school_age(citizen) or citizen.school_id not in self.buildings:
+                continue
+            citizen.education = clamp(citizen.education + self.education_gain(citizen), 0, 100)
+
     def record_graphs(self):
         for key, value in (
             ("population", self.stats.population),
@@ -791,12 +1609,12 @@ class City:
                 b = tile.build
                 if b in SERVICE_KINDS and not tile.is_origin(x, y):
                     continue
-                if b == BuildKind.COAL:
-                    power_sources.append((x, y, 450))
-                elif b == BuildKind.SOLAR:
-                    power_sources.append((x, y, 110))
-                elif b == BuildKind.WATER_PUMP and self.pump_has_water_neighbor(x, y):
-                    water_sources.append((x, y, 90))
+                if b in {BuildKind.COAL, BuildKind.SOLAR}:
+                    power_sources.append((x, y, self.power_source_capacity(b)))
+                elif b == BuildKind.WATER_PUMP:
+                    capacity = self.water_pump_capacity(x, y)
+                    if capacity:
+                        water_sources.append((x, y, capacity))
 
         self._flood_network(power_sources, "powered", {BuildKind.POWERLINE, BuildKind.ROAD, BuildKind.BRIDGE, BuildKind.RAIL_CROSSING})
         self._flood_network(water_sources, "watered", set(), use_pipes=True)
@@ -884,106 +1702,129 @@ class City:
         for x in range(self.width):
             for y in range(self.height):
                 tile = self.tiles[x][y]
-                pollution = 0.0
-                land = 45.0 + tile.terrain * 3.0
-                crime = 50.0
-                health = 40.0
-                education = 35.0
-                fire_risk = 40.0
+                scores = dict(TILE_SCORE["base"])
+                scores["land_value"] += tile.terrain * TILE_SCORE["terrain_land_value"]
                 if tile.water:
-                    land += 16.0
+                    scores["land_value"] += TILE_SCORE["water_land_value"]
                 if tile.trees:
-                    land += 4.0
-                for nx, ny, d in self.neighbors_radius(x, y, 8):
+                    scores["land_value"] += TILE_SCORE["trees_land_value"]
+                radius = TILE_SCORE["radius"]
+                for nx, ny, d in self.neighbors_radius(x, y, radius):
                     other = self.tiles[nx][ny]
                     if other.build in SERVICE_KINDS and not other.is_origin(nx, ny):
                         continue
-                    weight = max(0.0, (8 - d) / 8)
-                    if other.build == BuildKind.IND:
-                        pollution += (8 + other.level * 10) * weight
-                        land -= (5 + other.level * 4) * weight
-                    elif other.build == BuildKind.GARBAGE:
-                        pollution += 22 * weight
-                        land -= 18 * weight
-                        health -= 8 * weight
-                    elif other.build == BuildKind.COAL:
-                        pollution += 35 * weight
-                        land -= 15 * weight
-                    elif other.build == BuildKind.PARK:
-                        land += 12 * weight
-                        health += 8 * weight
-                    elif other.build == BuildKind.LARGE_PARK:
-                        land += 24 * weight
-                        health += 16 * weight
-                    elif other.build == BuildKind.POLICE:
-                        crime -= 34 * weight
-                    elif other.build == BuildKind.FIRE:
-                        fire_risk -= 42 * weight
-                    elif other.build == BuildKind.CLINIC:
-                        health += 45 * weight
-                    elif other.build == BuildKind.SCHOOL:
-                        education += 42 * weight
-                    elif other.build == BuildKind.LIBRARY:
-                        education += 24 * weight
-                        land += 5 * weight
-                    elif other.build == BuildKind.STADIUM:
-                        land += 14 * weight
-                        crime += 3 * weight
-                    elif other.build == BuildKind.RAIL_STATION:
-                        land += 9 * weight
-                        pollution -= 2 * weight
-                    elif other.build == BuildKind.SEAPORT:
-                        land += 8 * weight
-                        pollution += 4 * weight
-                    elif other.build == BuildKind.AIRPORT:
-                        land += 10 * weight
-                        pollution += 6 * weight
-                    elif other.build in ROAD_KINDS:
-                        land += 1.5 * weight
+                    weight = max(0.0, (radius - d) / radius)
+                    effect = TILE_SCORE_EFFECTS.get(other.build)
+                    if other.build in ROAD_KINDS:
+                        effect = TILE_SCORE["road_effect"]
+                    if not effect:
+                        continue
+                    fill_ratio = clamp(other.garbage_fill / GARBAGE_ZONE_CAPACITY, 0.0, 1.0)
+                    for field in TILE_SCORE_FIELDS:
+                        scores[field] += (
+                            effect.get(field, 0.0)
+                            + effect.get(f"{field}_per_level", 0.0) * other.level
+                            + effect.get(f"{field}_per_fill", 0.0) * fill_ratio
+                        ) * weight
+
+                pollution = scores["pollution"]
                 tile.pollution = clamp(pollution, 0, 100)
-                tile.land_value = clamp(land - pollution * 0.3, 0, 100)
-                tile.crime = clamp(crime + max(0, tile.level - 2) * 5, 0, 100)
-                tile.health = clamp(health - pollution * 0.25, 0, 100)
-                tile.education = clamp(education, 0, 100)
-                tile.fire_risk = clamp(fire_risk + pollution * 0.15 + tile.level * 6, 0, 100)
+                tile.land_value = clamp(scores["land_value"] - pollution * TILE_SCORE["pollution_land_value_penalty"], 0, 100)
+                tile.crime = clamp(
+                    scores["crime"]
+                    + max(0, tile.level - TILE_SCORE["level_crime_penalty_after"]) * TILE_SCORE["level_crime_penalty"],
+                    0,
+                    100,
+                )
+                tile.health = clamp(scores["health"] - pollution * TILE_SCORE["pollution_health_penalty"], 0, 100)
+                tile.education = clamp(scores["education"], 0, 100)
+                tile.fire_risk = clamp(
+                    scores["fire_risk"]
+                    + pollution * TILE_SCORE["pollution_fire_risk_penalty"]
+                    + tile.level * TILE_SCORE["level_fire_risk"],
+                    0,
+                    100,
+                )
 
     def grow_city(self):
         self.calculate_demand()
+        origin_buildings = {building.origin: building for building in self.buildings.values()}
         zones = []
         for x in range(self.width):
             for y in range(self.height):
                 t = self.tiles[x][y]
                 if t.build in {BuildKind.RES, BuildKind.COM, BuildKind.IND}:
-                    zones.append((x, y, t))
-        random.shuffle(zones)
-        for x, y, t in zones[: max(12, len(zones) // 3)]:
-            demand = {
-                BuildKind.RES: self.stats.demand_r,
-                BuildKind.COM: self.stats.demand_c,
-                BuildKind.IND: self.stats.demand_i,
-            }[t.build]
+                    zones.append((x, y, t, origin_buildings.get((x, y))))
+        for x, y, t, building in zones:
+            pressure = self.zone_growth_pressure(t, building)
             score = self.zone_score(t)
-            grow_chance = max(0.0, (demand + score - 120) / 260.0)
-            shrink_chance = max(0.0, (42 - demand + (38 - score)) / 220.0)
-            grow_chance += self.zone_growth_bonus(t.build)
-            grow_chance -= self.tax_growth_penalty()
-            if t.powered and t.watered and t.road_access and random.random() < grow_chance:
-                if t.level < 5:
-                    t.level += 1
-                    t.age = 0
-            elif random.random() < shrink_chance:
-                t.level = max(1, t.level - 1)
-            t.age += 1
+            can_grow = t.powered and t.watered and t.road_access
+            if can_grow and pressure >= 70 and score >= 55 and t.level < 5:
+                t.level += 1
+            elif (pressure <= -25 or score < 25) and t.level > 1:
+                t.level -= 1
 
+        self.rebuild_building_registry()
+        self.calculate_demand()
         if self.disasters_enabled and random.random() < 0.002 + self.stats.pollution / 70000:
             self.trigger_fire()
 
+    def zone_fill_ratio(self, building, filled_attr, capacity_attr):
+        if not building:
+            return 0.0
+        capacity = getattr(building, capacity_attr)
+        if capacity <= 0:
+            return 1.0
+        return clamp(len(getattr(building, filled_attr)) / capacity, 0.0, 1.0)
+
+    def resource_shortage_penalty(self):
+        penalty = 0
+        if self.stats.power_used > self.stats.power_cap:
+            penalty += RESOURCE_SHORTAGE_PENALTY["power"]
+        if self.stats.water_used > self.stats.water_cap:
+            penalty += RESOURCE_SHORTAGE_PENALTY["water"]
+        if self.stats.garbage_used > self.stats.garbage_cap:
+            penalty += RESOURCE_SHORTAGE_PENALTY["garbage"]
+        return penalty
+
+    def commercial_customer_support(self):
+        return clamp(len(self.citizens) / 12.0, 0.0, 1.0)
+
+    def industrial_labor_support(self, building=None):
+        working_age = len(self.working_age_citizens())
+        if building and building.job_capacity > 0:
+            return clamp(working_age / building.job_capacity, 0.0, 1.0)
+        return clamp(working_age / 10.0, 0.0, 1.0)
+
+    def zone_growth_pressure(self, tile, building):
+        demand = {
+            BuildKind.RES: self.stats.demand_r,
+            BuildKind.COM: self.stats.demand_c,
+            BuildKind.IND: self.stats.demand_i,
+        }.get(tile.build, 0.0)
+        score = self.zone_score(tile)
+        pressure = demand + (score - 50) * 0.45
+        if tile.build == BuildKind.RES:
+            pressure += (self.zone_fill_ratio(building, "resident_ids", "resident_capacity") - 0.80) * 45
+        elif tile.build == BuildKind.COM:
+            pressure += (self.zone_fill_ratio(building, "worker_ids", "job_capacity") - 0.75) * 85
+            customer_support = self.commercial_customer_support()
+            pressure += customer_support * 30
+            if building and building.level <= 1:
+                pressure += customer_support * 20
+        elif tile.build == BuildKind.IND:
+            pressure += (self.zone_fill_ratio(building, "worker_ids", "job_capacity") - 0.70) * 70
+            labor_support = self.industrial_labor_support(building)
+            pressure += labor_support * 42
+            if building and building.level <= 1:
+                pressure += self.industrial_labor_support() * 16
+        pressure += self.zone_growth_bonus(tile.build) * 100
+        pressure -= self.tax_growth_penalty() * 100
+        pressure -= self.resource_shortage_penalty() * 0.35
+        return pressure
+
     def zone_growth_bonus(self, build):
-        return {
-            BuildKind.RES: 0.010,
-            BuildKind.COM: 0.008,
-            BuildKind.IND: 0.012,
-        }.get(build, 0.0)
+        return ZONE_GROWTH_BONUS.get(build, 0.0)
 
     def tax_growth_penalty(self):
         return max(0.0, self.tax_rate - 8.0) * 0.006
@@ -1007,72 +1848,77 @@ class City:
         return clamp(utility, 0, 100)
 
     def calculate_demand(self):
-        population = jobs = shops = 0
-        power_used = water_used = 0
-        traffic_tiles = 0
+        self.sync_work_and_school_assignments()
+        housing_capacity = shops = 0
         pollution_sum = 0.0
         built = 0
+        origin_buildings = {building.origin: building for building in self.buildings.values()}
         for x in range(self.width):
             for y in range(self.height):
                 t = self.tiles[x][y]
                 if t.build == BuildKind.RES:
-                    population += t.level * t.level * 12
-                    power_used += t.level * 4
-                    water_used += t.level * 5
+                    housing_capacity += self.building_resident_capacity(t.build, t.level)
                     built += 1
                 elif t.build == BuildKind.COM:
-                    shops += t.level * t.level * 8
-                    jobs += t.level * t.level * 5
-                    power_used += t.level * 5
-                    water_used += t.level * 3
+                    shops += self.commercial_shop_output(origin_buildings.get((x, y)))
                     built += 1
                 elif t.build == BuildKind.IND:
-                    jobs += t.level * t.level * 14
-                    power_used += t.level * 8
-                    water_used += t.level * 4
                     built += 1
                 elif t.build == BuildKind.GARBAGE:
-                    jobs += 1
-                    power_used += 1
                     built += 1
                 elif t.build in SERVICE_KINDS:
                     if not t.is_origin(x, y):
                         continue
-                    power_used += 8 if t.build not in {BuildKind.COAL, BuildKind.SOLAR} else 0
-                    water_used += 4 if t.build in {BuildKind.POLICE, BuildKind.FIRE, BuildKind.CLINIC, BuildKind.SCHOOL, BuildKind.LIBRARY, BuildKind.RAIL_STATION, BuildKind.STADIUM, BuildKind.SEAPORT, BuildKind.AIRPORT, BuildKind.WATER_PUMP} else 0
-                if t.build in ROAD_KINDS:
-                    traffic_tiles += self.road_traffic_neighbors(x, y)
                 pollution_sum += t.pollution
 
-        unemployment = max(0.0, (population * 0.42 - jobs) / max(1.0, population * 0.42))
-        worker_gap = max(0.0, (jobs - population * 0.42) / max(1.0, jobs))
+        power_used, water_used, garbage_used, garbage_cap = self.resource_usage()
+        population = len(self.citizens)
+        working_age = len(self.working_age_citizens())
+        assigned_workers = sum(1 for citizen in self.citizens.values() if citizen.job_id is not None)
+        job_capacity = sum(building.job_capacity for building in self.buildings.values())
+        job_fill = assigned_workers / max(1, job_capacity) if job_capacity else 0.0
+        school_age = len(self.school_age_citizens())
+        assigned_students = sum(1 for citizen in self.citizens.values() if citizen.school_id is not None)
+        education_coverage = assigned_students / max(1, school_age) if school_age else 1.0
+        housing_fill = population / max(1, housing_capacity) if housing_capacity else 0.0
+        unemployment = max(0.0, (working_age - assigned_workers) / max(1.0, working_age))
+        worker_gap = max(0.0, (job_capacity - assigned_workers) / max(1.0, job_capacity))
         shop_gap = max(0.0, (population * 0.18 - shops) / max(1.0, population * 0.18))
+        customer_signal = clamp(population / 30.0, 0.0, 1.0)
+        labor_signal = clamp(working_age / 30.0, 0.0, 1.0)
         infrastructure_penalty = 0
         if power_used > self.stats.power_cap:
-            infrastructure_penalty += 25
+            infrastructure_penalty += RESOURCE_SHORTAGE_PENALTY["power"]
         if water_used > self.stats.water_cap:
-            infrastructure_penalty += 16
+            infrastructure_penalty += RESOURCE_SHORTAGE_PENALTY["water"]
+        if garbage_used > garbage_cap:
+            infrastructure_penalty += RESOURCE_SHORTAGE_PENALTY["garbage"]
         tax_penalty = max(0.0, self.tax_rate - 7.0) * 5.5
         cash_pressure = -8 if self.money < 0 else 0
         self.stats.population = int(population)
-        self.stats.jobs = int(jobs)
+        self.stats.jobs = int(assigned_workers)
         self.stats.shops = int(shops)
         self.stats.power_used = int(power_used)
         self.stats.water_used = int(water_used)
+        self.stats.garbage_used = garbage_used
+        self.stats.garbage_cap = garbage_cap
         self.stats.unemployment = unemployment
-        self.stats.pollution = pollution_sum / max(1, self.width * self.height)
-        self.stats.traffic = min(100, traffic_tiles * 1.7)
-        self.stats.demand_r = clamp(36 + worker_gap * 55 - unemployment * 60 - tax_penalty * 1.1 - infrastructure_penalty * 1.15 + cash_pressure, -80, 100)
-        self.stats.demand_c = clamp(28 + shop_gap * 62 + population / 800 - tax_penalty * 0.95 - infrastructure_penalty * 1.1, -80, 100)
-        self.stats.demand_i = clamp(34 + unemployment * 55 - population / 1800 - tax_penalty * 0.75 - infrastructure_penalty, -80, 100)
+        garbage_overflow = max(0, garbage_used - garbage_cap)
+        self.stats.pollution = clamp(pollution_sum / max(1, self.width * self.height) + garbage_overflow * 0.02, 0, 100)
+        self.stats.traffic = min(100, sum(trip.distance for trip in self.trips) * 0.35)
         service_score = self.average_services()
+        self.stats.demand_r = clamp(24 + worker_gap * 80 + housing_fill * 24 + service_score * 0.16 - unemployment * 72 - tax_penalty * 1.05 - infrastructure_penalty + cash_pressure, -80, 100)
+        self.stats.demand_c = clamp(20 + shop_gap * 86 + job_fill * 32 + customer_signal * 14 + population / 900 - tax_penalty * 0.9 - infrastructure_penalty * 0.8, -80, 100)
+        self.stats.demand_i = clamp(18 + unemployment * 84 + job_fill * 28 + labor_signal * 18 - housing_capacity / 2000 - tax_penalty * 0.7 - infrastructure_penalty * 0.75, -80, 100)
         utility_score = 100
         if power_used > self.stats.power_cap:
             utility_score -= 32
         if water_used > self.stats.water_cap:
             utility_score -= 22
+        if garbage_used > garbage_cap:
+            utility_score -= 12
         self.stats.mood = clamp(
-            55 + service_score * 0.24 - unemployment * 32 - self.stats.pollution * 0.35 - max(0, self.tax_rate - 8) * 4 + utility_score * 0.18,
+            55 + service_score * 0.24 + education_coverage * 6 - unemployment * 32 - self.stats.pollution * 0.35 - max(0, self.tax_rate - 8) * 4 + utility_score * 0.18,
             0,
             100,
         )
@@ -1083,7 +1929,7 @@ class City:
     def road_congestion(self, x, y):
         if self.tiles[x][y].build not in ROAD_KINDS:
             return 0
-        return min(100, self.road_traffic_neighbors(x, y) * 1.7)
+        return min(100, self.traffic_loads.get((x, y), 0.0) * 8.0)
 
     def average_services(self):
         total = count = 0
@@ -1099,6 +1945,7 @@ class City:
 
     def update_fires(self):
         burning = []
+        changed = False
         for x in range(self.width):
             for y in range(self.height):
                 t = self.tiles[x][y]
@@ -1113,82 +1960,24 @@ class City:
                         self.tiles[tx][ty].build = BuildKind.RUBBLE
                         self.tiles[tx][ty].fire_timer = 0
                     self.add_message("Fire contained. Rubble remains.", WARN, 5)
+                    changed = True
                 else:
                     for tx, ty in self.building_tiles(x, y):
                         self.tiles[tx][ty].build = BuildKind.RUBBLE
                         self.tiles[tx][ty].fire_timer = 0
                     self.add_message("A building burned down.", BAD, 5)
+                    changed = True
                     for tx, ty in self.building_tiles(x, y):
                         for nx, ny in self.neighbors4(tx, ty):
                             nt = self.tiles[nx][ny]
                             if nt.build not in {BuildKind.EMPTY, BuildKind.ROAD, BuildKind.BRIDGE, BuildKind.RAIL, BuildKind.RAIL_BRIDGE, BuildKind.RAIL_CROSSING, BuildKind.WATER, BuildKind.POWERLINE, BuildKind.BURNING, BuildKind.RUBBLE} and random.random() < 0.08:
                                 self.ignite_building(nx, ny)
+        if changed:
+            self.rebuild_building_registry()
 
 
 def clamp(value, lo, hi):
     return max(lo, min(hi, value))
-
-
-class Camera:
-    def __init__(self):
-        self.x = SCREEN_W * 0.46
-        self.y = 116
-        self.zoom = 1.0
-        self.rotation = 0
-
-    @property
-    def tile_w(self):
-        return BASE_TILE_W * self.zoom
-
-    @property
-    def tile_h(self):
-        return BASE_TILE_H * self.zoom
-
-    def rotate_world(self, tx, ty):
-        if self.rotation == 1:
-            return ty, MAP_W - 1 - tx
-        if self.rotation == 2:
-            return MAP_W - 1 - tx, MAP_H - 1 - ty
-        if self.rotation == 3:
-            return MAP_H - 1 - ty, tx
-        return tx, ty
-
-    def unrotate_world(self, rx, ry):
-        if self.rotation == 1:
-            return MAP_W - 1 - ry, rx
-        if self.rotation == 2:
-            return MAP_W - 1 - rx, MAP_H - 1 - ry
-        if self.rotation == 3:
-            return ry, MAP_H - 1 - rx
-        return rx, ry
-
-    def iso_offset(self, tx, ty):
-        rx, ry = self.rotate_world(tx, ty)
-        return (rx - ry) * self.tile_w / 2, (rx + ry) * self.tile_h / 2
-
-    def world_to_screen(self, tx, ty, z=0):
-        ox, oy = self.iso_offset(tx, ty)
-        sx = ox + self.x
-        sy = oy + self.y - z * 7 * self.zoom
-        return sx, sy
-
-    def screen_to_world(self, sx, sy):
-        sx -= self.x
-        sy -= self.y
-        rx = sy / self.tile_h + sx / self.tile_w
-        ry = sy / self.tile_h - sx / self.tile_w
-        tx, ty = self.unrotate_world(rx, ry)
-        return int(math.floor(tx + 0.5)), int(math.floor(ty + 0.5))
-
-    def center_on(self, tx, ty, screen_x, screen_y):
-        iso_x, iso_y = self.iso_offset(tx, ty)
-        self.x = screen_x - iso_x
-        self.y = screen_y - iso_y
-
-    def rotate(self, turns, screen_x, screen_y):
-        tx, ty = self.screen_to_world(screen_x, screen_y)
-        self.rotation = (self.rotation + turns) % 4
-        self.center_on(tx, ty, screen_x, screen_y)
 
 
 class Button:
@@ -1249,6 +2038,7 @@ class Game:
         self.hover = None
         self.dragging_path = False
         self.dragging_zone = False
+        self.ui.selected_citizen_id = None
         self.path_plan = []
         self.zone_plan = []
         return True
@@ -1267,9 +2057,11 @@ class Game:
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.KEYDOWN:
-                self.handle_keydown(event.key)
+                self.handle_keydown(event.key, event.mod)
             elif event.type == pygame.MOUSEWHEEL:
                 mx, my = pygame.mouse.get_pos()
+                if self.ui.handle_wheel(mx, my, event.y):
+                    continue
                 if mx < SCREEN_W - SIDEBAR_W:
                     old = self.camera.zoom
                     self.camera.zoom = clamp(self.camera.zoom + event.y * 0.08, 0.62, 1.55)
@@ -1281,6 +2073,7 @@ class Game:
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:
                     self.dragging_tax = False
+                    self.ui.avatar_slider_dragging = None
                     if self.dragging_path:
                         self.commit_path()
                     if self.dragging_zone:
@@ -1302,6 +2095,8 @@ class Game:
             elif event.type == pygame.MOUSEMOTION:
                 if self.dragging_tax:
                     self.ui.set_tax_from_slider(event.pos[0])
+                if self.ui.avatar_slider_dragging:
+                    self.ui.set_avatar_editor_slider_from_mouse(self.ui.avatar_slider_dragging, event.pos[0])
                 if self.dragging_map:
                     dx, dy = event.rel
                     self.camera.x += dx
@@ -1313,7 +2108,15 @@ class Game:
                 if self.auto_build:
                     self.use_tool_at_mouse()
 
-    def handle_keydown(self, key):
+    def handle_keydown(self, key, mod=0):
+        ctrl = mod & pygame.KMOD_CTRL
+        if ctrl and key == pygame.K_s:
+            self.save_game()
+            return
+        if ctrl and key == pygame.K_l:
+            self.load_game()
+            return
+
         if key == pygame.K_ESCAPE:
             self.running = False
         elif key in TOOL_KEYS:
@@ -1716,7 +2519,7 @@ class Game:
         return self.tool == Tool.WATER or self.ui.map_mode == MapMode.PIPES
 
     def analysis_map_active(self):
-        return self.ui.map_mode in {MapMode.TRAFFIC, MapMode.LAND_VALUE}
+        return self.ui.map_mode in {MapMode.TRAFFIC, MapMode.LAND_VALUE, MapMode.POLLUTION, MapMode.CRIME, MapMode.FIRE_RISK, MapMode.HEALTH}
 
     def draw_analysis_map_layer(self, visible):
         for _, x, y, _, _ in visible:
@@ -1731,12 +2534,20 @@ class Game:
         tile = self.city.tiles[x][y]
         if self.ui.map_mode == MapMode.TRAFFIC:
             if tile.build in ROAD_KINDS:
-                return heat_color(self.city.road_congestion(x, y))
+                return risk_color(self.city.road_congestion(x, y))
             if tile.build in ZONE_KINDS:
                 return (76, 70, 62)
             return None
         if self.ui.map_mode == MapMode.LAND_VALUE and tile.build in ZONE_KINDS:
             return heat_color(tile.land_value)
+        if self.ui.map_mode == MapMode.POLLUTION:
+            return risk_color(tile.pollution)
+        if self.ui.map_mode == MapMode.CRIME:
+            return risk_color(tile.crime)
+        if self.ui.map_mode == MapMode.FIRE_RISK:
+            return risk_color(tile.fire_risk)
+        if self.ui.map_mode == MapMode.HEALTH:
+            return heat_color(tile.health)
         return None
 
     def draw_water_pipe_layer(self, visible):
@@ -1846,7 +2657,12 @@ class Game:
 
     def draw_tool_preview(self):
         x, y = self.hover
-        if self.tool in TOOL_BUILD:
+        if self.tool == Tool.BULLDOZE:
+            ok, _ = self.city.can_build(self.tool, x, y)
+            color = BAD if ok else MUTED
+            for tx, ty in self.city.building_tiles(x, y):
+                self.draw_tile_overlay(tx, ty, color, 2)
+        elif self.tool in TOOL_BUILD:
             kind = TOOL_BUILD[self.tool]
             ok, _ = self.city.can_build(self.tool, x, y)
             color = ACCENT if ok else BAD
@@ -2134,8 +2950,14 @@ class Game:
     def draw_industrial_workshop(self, x, y, sx, sy, lot_color):
         return shapes.draw_industrial_workshop(self, x, y, sx, sy, lot_color)
 
+    def garbage_visual_fill_ratio(self, x, y):
+        tile = self.city.tiles[x][y]
+        if tile.build != BuildKind.GARBAGE:
+            return 0.0
+        return clamp(tile.garbage_fill / GARBAGE_ZONE_CAPACITY, 0.0, 1.0)
+
     def draw_garbage_zone(self, x, y, sx, sy, lot_color):
-        return shapes.draw_garbage_zone(self, x, y, sx, sy, lot_color)
+        return shapes.draw_garbage_zone(self, x, y, sx, sy, lot_color, self.garbage_visual_fill_ratio(x, y))
 
     def draw_park(self, x, y, sx, sy):
         z = self.camera.zoom
@@ -2323,692 +3145,6 @@ class Game:
             pygame.draw.polygon(self.screen, (255, 189, 61), [(p[0], p[1] + 4 * z) for p in flame])
 
 
-class UI:
-    def __init__(self, game):
-        self.game = game
-        self.buttons = []
-        self.menu_buttons = []
-        self.time_buttons = []
-        self.build_menus = []
-        self.open_menu = None
-        self.game_menu_open = False
-        self.map_menu_open = False
-        self.map_mode = MapMode.STANDARD
-        self.budget_open = False
-        self.make_buttons()
-
-    def make_buttons(self):
-        x = SCREEN_W - SIDEBAR_W + 14
-        y = TOPBAR_H + 28
-        self.build_menus = [
-            ("Transport", [("Road", Tool.ROAD, "1"), ("Rail", Tool.RAIL, "B"), ("Railway Station", Tool.RAIL_STATION, ""), ("Seaport", Tool.SEAPORT, ""), ("Airport", Tool.AIRPORT, "")]),
-            ("Zones", [("Res", Tool.RES, "2"), ("Com", Tool.COM, "3"), ("Ind", Tool.IND, "4"), ("Garbage", Tool.GARBAGE, "")]),
-            ("Utilities", [("Power Line", Tool.POWERLINE, "5"), ("Pipes", Tool.WATER, "6"), ("Pump", Tool.WATER_PUMP, ""), ("Solar", Tool.SOLAR, "P"), ("Coal", Tool.COAL, "=")]),
-            ("Services", [("Park", Tool.PARK, "7"), ("Large Park", Tool.LARGE_PARK, ""), ("Police", Tool.POLICE, "8"), ("Fire", Tool.FIRE, "9"), ("Clinic", Tool.CLINIC, "0"), ("School", Tool.SCHOOL, "-"), ("Library", Tool.LIBRARY, ""), ("Stadium", Tool.STADIUM, "")]),
-            ("Tools", [("Doze", Tool.BULLDOZE, "X"), ("Info", Tool.INSPECT, "I")]),
-        ]
-        self.menu_buttons = []
-        for i, (label, _) in enumerate(self.build_menus):
-            self.menu_buttons.append(Button((x, y + i * 40, 260, 32), label, menu=i))
-        self.buttons = self.menu_buttons
-
-        tx = 716
-        self.time_buttons = [
-            Button((tx, 8, 38, 30), "||", hotkey="Space"),
-            Button((tx + 42, 8, 38, 30), ">", hotkey="0.5x"),
-            Button((tx + 84, 8, 42, 30), ">>", hotkey="1.5x"),
-            Button((tx + 130, 8, 46, 30), ">>>", hotkey="2.5x"),
-        ]
-
-    def menu_tools(self, menu_index):
-        return [tool for _, tool, _ in self.build_menus[menu_index][1]]
-
-    def menu_item_buttons(self, menu_index):
-        menu_button = self.menu_buttons[menu_index]
-        items = self.build_menus[menu_index][1]
-        width = 172
-        x = SCREEN_W - SIDEBAR_W - width - 8
-        y = menu_button.rect.y
-        return [
-            Button((x, y + i * 36, width, 32), label, tool, hotkey)
-            for i, (label, tool, hotkey) in enumerate(items)
-        ]
-
-    def menu_popup_rect(self, menu_index):
-        buttons = self.menu_item_buttons(menu_index)
-        rect = buttons[0].rect.copy()
-        for b in buttons[1:]:
-            rect.union_ip(b.rect)
-        rect.inflate_ip(10, 10)
-        return rect
-
-    def minimap_rect(self):
-        return pygame.Rect(SCREEN_W - SIDEBAR_W + 16, SCREEN_H - 115, 112, 112)
-
-    def minimap_to_tile(self, mx, my):
-        rect = self.minimap_rect()
-        c = self.game.city
-        tx = int((mx - rect.x) / rect.width * c.width)
-        ty = int((my - rect.y) / rect.height * c.height)
-        return int(clamp(tx, 0, c.width - 1)), int(clamp(ty, 0, c.height - 1))
-
-    def center_camera_on_tile(self, tx, ty):
-        view_w = SCREEN_W - SIDEBAR_W
-        view_h = SCREEN_H - TOPBAR_H
-        self.game.camera.center_on(tx, ty, view_w / 2, TOPBAR_H + view_h / 2)
-
-    def handle_click(self, mx, my):
-        if self.game_menu_open:
-            for action, rect in self.game_menu_items():
-                if rect.collidepoint(mx, my):
-                    self.game_menu_open = False
-                    if action == "save":
-                        self.game.save_game()
-                    elif action == "load":
-                        self.game.load_game()
-                    elif action == "disasters":
-                        c = self.game.city
-                        c.disasters_enabled = not c.disasters_enabled
-                        state = "on" if c.disasters_enabled else "off"
-                        c.add_message(f"Disasters turned {state}.", TEXT, 4)
-                    elif action == "quit":
-                        self.game.running = False
-                    return True
-            if self.game_menu_rect().collidepoint(mx, my):
-                return True
-            self.game_menu_open = False
-            return True
-        if self.map_menu_open:
-            for mode, rect in self.map_menu_items():
-                if rect.collidepoint(mx, my):
-                    self.map_mode = mode
-                    self.map_menu_open = False
-                    return True
-            if self.map_menu_rect().collidepoint(mx, my):
-                return True
-            self.map_menu_open = False
-            return True
-        if my < TOPBAR_H:
-            if self.game_menu_button_rect().collidepoint(mx, my):
-                self.game_menu_open = not self.game_menu_open
-                self.open_menu = None
-                self.map_menu_open = False
-                return True
-            self.game_menu_open = False
-            for i, b in enumerate(self.time_buttons):
-                if b.rect.collidepoint(mx, my):
-                    c = self.game.city
-                    if i == 0:
-                        c.paused = True
-                    elif i == 1:
-                        c.paused = False
-                        c.sim_speed = PLAY_SPEED
-                    elif i == 2:
-                        c.paused = False
-                        c.sim_speed = FAST_SPEED
-                    elif i == 3:
-                        c.paused = False
-                        c.sim_speed = FASTER_SPEED
-                    return True
-            return True
-
-        if self.game.city.selected and self.inspector_popup_rect().collidepoint(mx, my):
-            if self.inspector_close_rect().collidepoint(mx, my):
-                self.game.city.selected = None
-            return True
-        if self.budget_open and self.budget_popup_rect().collidepoint(mx, my):
-            if self.budget_close_rect().collidepoint(mx, my):
-                self.budget_open = False
-            elif self.tax_slider_hit_rect().collidepoint(mx, my):
-                self.set_tax_from_slider(mx)
-                self.game.dragging_tax = True
-            return True
-
-        if self.open_menu is not None:
-            for b in self.menu_item_buttons(self.open_menu):
-                if b.rect.collidepoint(mx, my):
-                    self.game.tool = b.tool
-                    self.open_menu = None
-                    return True
-            if self.menu_popup_rect(self.open_menu).collidepoint(mx, my):
-                return True
-            if mx < SCREEN_W - SIDEBAR_W:
-                self.open_menu = None
-                return True
-
-        for b in self.menu_buttons:
-            if b.rect.collidepoint(mx, my):
-                self.game_menu_open = False
-                self.map_menu_open = False
-                self.open_menu = None if self.open_menu == b.menu else b.menu
-                return True
-        if self.map_title_rect().collidepoint(mx, my):
-            self.game_menu_open = False
-            self.open_menu = None
-            self.map_menu_open = not self.map_menu_open
-            return True
-        if self.minimap_rect().collidepoint(mx, my):
-            tx, ty = self.minimap_to_tile(mx, my)
-            self.center_camera_on_tile(tx, ty)
-            self.open_menu = None
-            self.map_menu_open = False
-            return True
-        if self.budget_button_rect().collidepoint(mx, my):
-            self.game_menu_open = False
-            self.map_menu_open = False
-            self.budget_open = not self.budget_open
-            return True
-        if mx >= SCREEN_W - SIDEBAR_W:
-            self.open_menu = None
-            self.map_menu_open = False
-            return True
-        return False
-
-    def draw(self):
-        self.draw_topbar()
-        self.draw_sidebar()
-        self.draw_game_menu()
-        self.draw_messages()
-        self.draw_budget_popup()
-        self.draw_inspector_popup()
-        self.draw_tooltip()
-
-    def draw_topbar(self):
-        g, c = self.game, self.game.city
-        pygame.draw.rect(g.screen, PANEL_BG, (0, 0, SCREEN_W, TOPBAR_H))
-        pygame.draw.line(g.screen, (57, 64, 74), (0, TOPBAR_H - 1), (SCREEN_W, TOPBAR_H - 1))
-        title = g.big.render("PyCity 2000", True, TEXT)
-        g.screen.blit(title, (15, 11))
-        date = f"{c.month:02d}/{c.day:02d}/{c.year}"
-        paused = "PAUSED" if c.paused else f"{c.sim_speed:.1f}x"
-        items = [
-            (f"${c.money:,}", GOOD if c.money >= 0 else BAD),
-            (date, TEXT),
-            (paused, WARN if c.paused else ACCENT),
-            (f"Pop {c.stats.population:,}", TEXT),
-            (f"Mood {c.stats.mood:.0f}", meter_color(c.stats.mood)),
-            (f"Tax {c.tax_rate:.1f}%", TEXT),
-        ]
-        x = 190
-        for text, color in items:
-            surf = g.font.render(text, True, color)
-            g.screen.blit(surf, (x, 14))
-            x += surf.get_width() + 24
-        self.draw_time_buttons()
-        tool = g.font.render(f"Tool {g.tool.value}", True, ACCENT)
-        g.screen.blit(tool, (960, 14))
-        self.draw_game_menu_button()
-
-    def draw_time_buttons(self):
-        g, c = self.game, self.game.city
-        for i, b in enumerate(self.time_buttons):
-            active = (
-                (i == 0 and c.paused)
-                or (i == 1 and not c.paused and c.sim_speed == PLAY_SPEED)
-                or (i == 2 and not c.paused and c.sim_speed == FAST_SPEED)
-                or (i == 3 and not c.paused and c.sim_speed == FASTER_SPEED)
-            )
-            pygame.draw.rect(g.screen, ACCENT if active else PANEL_2, b.rect, border_radius=6)
-            pygame.draw.rect(g.screen, (75, 86, 99), b.rect, 1, border_radius=6)
-            color = (15, 20, 25) if active else TEXT
-            label = g.small.render(b.label, True, color)
-            g.screen.blit(label, label.get_rect(center=b.rect.center))
-
-    def game_menu_button_rect(self):
-        return pygame.Rect(SCREEN_W - 88, 8, 74, 30)
-
-    def game_menu_rect(self):
-        button = self.game_menu_button_rect()
-        width = 162
-        return pygame.Rect(button.right - width, TOPBAR_H - 2, width, 136)
-
-    def game_menu_items(self):
-        rect = self.game_menu_rect()
-        return [
-            ("save", pygame.Rect(rect.x + 6, rect.y + 6, rect.width - 12, 28)),
-            ("load", pygame.Rect(rect.x + 6, rect.y + 38, rect.width - 12, 28)),
-            ("disasters", pygame.Rect(rect.x + 6, rect.y + 70, rect.width - 12, 28)),
-            ("quit", pygame.Rect(rect.x + 6, rect.y + 102, rect.width - 12, 28)),
-        ]
-
-    def draw_game_menu_button(self):
-        g = self.game
-        rect = self.game_menu_button_rect()
-        active = self.game_menu_open
-        pygame.draw.rect(g.screen, ACCENT if active else PANEL_2, rect, border_radius=6)
-        pygame.draw.rect(g.screen, (75, 86, 99), rect, 1, border_radius=6)
-        color = (15, 20, 25) if active else TEXT
-        label = g.font.render("Game", True, color)
-        g.screen.blit(label, (rect.x + 10, rect.y + 8))
-        arrow = g.small.render("v", True, color)
-        g.screen.blit(arrow, (rect.right - 16, rect.y + 10))
-
-    def draw_game_menu(self):
-        if not self.game_menu_open:
-            return
-        g = self.game
-        rect = self.game_menu_rect()
-        pygame.draw.rect(g.screen, (18, 22, 27), rect, border_radius=7)
-        pygame.draw.rect(g.screen, (75, 86, 99), rect, 1, border_radius=7)
-        labels = {
-            "save": "Save",
-            "load": "Load",
-            "disasters": f"Disasters: {'On' if g.city.disasters_enabled else 'Off'}",
-            "quit": "Quit",
-        }
-        for action, item in self.game_menu_items():
-            pygame.draw.rect(g.screen, PANEL_2, item, border_radius=5)
-            pygame.draw.rect(g.screen, (75, 86, 99), item, 1, border_radius=5)
-            label = g.font.render(labels[action], True, TEXT)
-            g.screen.blit(label, (item.x + 10, item.y + 7))
-
-    def draw_sidebar(self):
-        g, c = self.game, self.game.city
-        x = SCREEN_W - SIDEBAR_W
-        pygame.draw.rect(g.screen, PANEL_BG, (x, TOPBAR_H, SIDEBAR_W, SCREEN_H - TOPBAR_H))
-        pygame.draw.line(g.screen, (57, 64, 74), (x, TOPBAR_H), (x, SCREEN_H))
-        self.section_title("Build", x + 14, TOPBAR_H + 8)
-        for b in self.menu_buttons:
-            active = g.tool in self.menu_tools(b.menu)
-            selected = self.open_menu == b.menu or active
-            pygame.draw.rect(g.screen, ACCENT if selected else PANEL_2, b.rect, border_radius=6)
-            pygame.draw.rect(g.screen, (75, 86, 99), b.rect, 1, border_radius=6)
-            arrow = g.small.render("<", True, (15, 20, 25) if selected else MUTED)
-            g.screen.blit(arrow, (b.rect.x + 9, b.rect.y + 10))
-            label = g.font.render(b.label, True, (15, 20, 25) if selected else TEXT)
-            g.screen.blit(label, (b.rect.x + 24, b.rect.y + 8))
-        if self.open_menu is not None:
-            self.draw_build_menu_popup(self.open_menu)
-
-        y = TOPBAR_H + 343
-        self.section_title("City", x + 14, y)
-        y += 24
-        self.metric("Demand R", c.stats.demand_r, -80, 100, x + 14, y, GOOD)
-        self.metric("Demand C", c.stats.demand_c, -80, 100, x + 14, y + 28, ACCENT)
-        self.metric("Demand I", c.stats.demand_i, -80, 100, x + 14, y + 56, WARN)
-        self.metric("Power", c.stats.power_used, 0, max(1, c.stats.power_cap), x + 14, y + 86, (255, 218, 88), suffix=f" / {c.stats.power_cap}")
-        self.metric("Water", c.stats.water_used, 0, max(1, c.stats.water_cap), x + 14, y + 112, (104, 182, 255), suffix=f" / {c.stats.water_cap}")
-        self.metric("Traffic", c.stats.traffic, 0, 100, x + 14, y + 138, WARN)
-        self.metric("Pollution", c.stats.pollution, 0, 100, x + 14, y + 164, BAD)
-
-        y += 194
-        self.draw_budget_button(x + 14, y)
-
-        map_y = self.minimap_rect().y
-        self.draw_minimap(x + 16, map_y)
-        self.draw_graphs(x + 154, map_y)
-        self.draw_map_menu()
-
-    def budget_button_rect(self):
-        return pygame.Rect(SCREEN_W - SIDEBAR_W + 14, TOPBAR_H + 571, 260, 34)
-
-    def map_title_rect(self):
-        rect = self.minimap_rect()
-        return pygame.Rect(rect.x, rect.y - 24, rect.width, 20)
-
-    def map_menu_items(self):
-        rect = self.map_menu_rect()
-        return [
-            (mode, pygame.Rect(rect.x + 6, rect.y + 6 + i * 32, rect.width - 12, 28))
-            for i, mode in enumerate(MapMode)
-        ]
-
-    def map_menu_rect(self):
-        title = self.map_title_rect()
-        width = 174
-        height = 4 * 32 + 12
-        return pygame.Rect(title.x - width - 8, title.y, width, height)
-
-    def draw_map_menu(self):
-        if not self.map_menu_open:
-            return
-        g = self.game
-        rect = self.map_menu_rect()
-        pygame.draw.rect(g.screen, (18, 22, 27), rect, border_radius=7)
-        pygame.draw.rect(g.screen, (75, 86, 99), rect, 1, border_radius=7)
-        for mode, item in self.map_menu_items():
-            selected = mode == self.map_mode
-            pygame.draw.rect(g.screen, ACCENT if selected else PANEL_2, item, border_radius=5)
-            pygame.draw.rect(g.screen, (75, 86, 99), item, 1, border_radius=5)
-            color = (15, 20, 25) if selected else TEXT
-            label = g.small.render(mode.value, True, color)
-            g.screen.blit(label, (item.x + 10, item.y + 8))
-
-    def draw_budget_button(self, x, y):
-        g, c = self.game, self.game.city
-        rect = self.budget_button_rect()
-        active = self.budget_open
-        pygame.draw.rect(g.screen, ACCENT if active else PANEL_2, rect, border_radius=6)
-        pygame.draw.rect(g.screen, (75, 86, 99), rect, 1, border_radius=6)
-        color = (15, 20, 25) if active else TEXT
-        label = g.font.render("Budget", True, color)
-        g.screen.blit(label, (rect.x + 10, rect.y + 8))
-        balance = c.stats.income - c.stats.expenses
-        summary = g.small.render(f"{balance:+.0f}/mo", True, color if active else (GOOD if balance >= 0 else BAD))
-        g.screen.blit(summary, (rect.right - summary.get_width() - 10, rect.y + 10))
-
-    def budget_popup_rect(self):
-        width, height = 272, 178
-        return pygame.Rect((SCREEN_W - width) // 2, (SCREEN_H - height) // 2, width, height)
-
-    def budget_close_rect(self):
-        rect = self.budget_popup_rect()
-        return pygame.Rect(rect.right - 28, rect.y + 8, 20, 20)
-
-    def tax_slider_rect(self):
-        rect = self.budget_popup_rect()
-        return pygame.Rect(rect.x + 14, rect.y + 132, rect.width - 28, 8)
-
-    def tax_slider_hit_rect(self):
-        return self.tax_slider_rect().inflate(0, 18)
-
-    def set_tax_from_slider(self, mx):
-        rect = self.tax_slider_rect()
-        ratio = clamp((mx - rect.x) / rect.width, 0.0, 1.0)
-        self.game.city.tax_rate = round(ratio * 20.0, 1)
-
-    def draw_budget_popup(self):
-        if not self.budget_open:
-            return
-        g, c = self.game, self.game.city
-        rect = self.budget_popup_rect()
-        pygame.draw.rect(g.screen, (18, 22, 27), rect, border_radius=7)
-        pygame.draw.rect(g.screen, (88, 100, 116), rect, 1, border_radius=7)
-        self.section_title("Budget", rect.x + 12, rect.y + 10)
-        close = self.budget_close_rect()
-        pygame.draw.rect(g.screen, PANEL_3, close, border_radius=4)
-        pygame.draw.rect(g.screen, (88, 100, 116), close, 1, border_radius=4)
-        x_label = g.small.render("x", True, MUTED)
-        g.screen.blit(x_label, x_label.get_rect(center=close.center))
-        y = rect.y + 38
-        self.text_line(f"Monthly income ${c.stats.income:,.0f}", rect.x + 14, y, GOOD)
-        self.text_line(f"Monthly upkeep ${c.stats.expenses:,.0f}", rect.x + 14, y + 22, WARN)
-        balance = c.stats.income - c.stats.expenses
-        self.text_line(f"Monthly balance ${balance:,.0f}", rect.x + 14, y + 44, GOOD if balance >= 0 else BAD)
-        self.text_line(f"Tax rate {c.tax_rate:.1f}%", rect.x + 14, y + 72, TEXT)
-        self.text_line("T/Y adjust tax", rect.x + 144, y + 72, MUTED)
-        slider = self.tax_slider_rect()
-        pygame.draw.rect(g.screen, PANEL_3, slider, border_radius=4)
-        fill = pygame.Rect(slider.x, slider.y, int(slider.width * c.tax_rate / 20.0), slider.height)
-        pygame.draw.rect(g.screen, ACCENT, fill, border_radius=4)
-        knob_x = slider.x + int(slider.width * c.tax_rate / 20.0)
-        pygame.draw.circle(g.screen, TEXT, (knob_x, slider.centery), 8)
-        pygame.draw.circle(g.screen, (88, 100, 116), (knob_x, slider.centery), 8, 1)
-        self.text_line("0%", slider.x, slider.y + 16, MUTED)
-        max_label = g.small.render("20%", True, MUTED)
-        g.screen.blit(max_label, (slider.right - max_label.get_width(), slider.y + 16))
-
-    def draw_build_menu_popup(self, menu_index):
-        g = self.game
-        rect = self.menu_popup_rect(menu_index)
-        pygame.draw.rect(g.screen, (18, 22, 27), rect, border_radius=7)
-        pygame.draw.rect(g.screen, (75, 86, 99), rect, 1, border_radius=7)
-        for b in self.menu_item_buttons(menu_index):
-            selected = b.tool == g.tool
-            pygame.draw.rect(g.screen, ACCENT if selected else PANEL_2, b.rect, border_radius=5)
-            pygame.draw.rect(g.screen, (75, 86, 99), b.rect, 1, border_radius=5)
-            label_color = (15, 20, 25) if selected else TEXT
-            label = g.font.render(b.label, True, label_color)
-            g.screen.blit(label, (b.rect.x + 9, b.rect.y + 8))
-            hk = g.small.render(b.hotkey, True, (15, 20, 25) if selected else MUTED)
-            g.screen.blit(hk, (b.rect.right - hk.get_width() - 8, b.rect.y + 10))
-
-    def section_title(self, text, x, y):
-        surf = self.game.font.render(text.upper(), True, MUTED)
-        self.game.screen.blit(surf, (x, y))
-
-    def text_line(self, text, x, y, color=TEXT):
-        self.game.screen.blit(self.game.small.render(text, True, color), (x, y))
-
-    def metric(self, label, value, lo, hi, x, y, color, suffix=""):
-        g = self.game
-        g.screen.blit(g.small.render(label, True, TEXT), (x, y))
-        rect = pygame.Rect(x + 82, y + 3, 150, 9)
-        pygame.draw.rect(g.screen, PANEL_3, rect, border_radius=4)
-        if hi == lo:
-            pct = 0
-        else:
-            pct = clamp((value - lo) / (hi - lo), 0, 1)
-        fill = rect.copy()
-        fill.width = int(rect.width * pct)
-        pygame.draw.rect(g.screen, color, fill, border_radius=4)
-        val = f"{value:.0f}{suffix}"
-        surf = g.small.render(val, True, MUTED)
-        g.screen.blit(surf, (x + 238 - surf.get_width(), y - 1))
-
-    def inspector_lines(self, pos):
-        c = self.game.city
-        tx, ty = pos
-        tile = c.tiles[tx][ty]
-        origin = c.building_origin(tx, ty)
-        footprint = tile.footprint
-        lines = [
-            f"{tx}, {ty}  {tile.build.value}  Pipe {'Y' if tile.pipe else 'N'}",
-            f"Origin {origin[0]},{origin[1]}  Size {footprint[0]}x{footprint[1]}  Level {tile.level}",
-            f"Land {tile.land_value:.0f}  Poll {tile.pollution:.0f}  Crime {tile.crime:.0f}  Fire {tile.fire_risk:.0f}",
-            f"Access Road {'Y' if tile.road_access else 'N'}  Water {'Y' if tile.watered else 'N'}  Electricity {'Y' if tile.powered else 'N'}",
-        ]
-        if tile.build in {BuildKind.RES, BuildKind.COM, BuildKind.IND}:
-            lines.append(self.zone_score_line(tile))
-        elif tile.build in ROAD_KINDS:
-            lines.append(f"Congestion {c.road_congestion(tx, ty):.0f}/100")
-        return lines
-
-    def zone_score_line(self, tile):
-        score = self.game.city.zone_score(tile)
-        if tile.build == BuildKind.RES:
-            return f"Score {score:.0f}: land({tile.land_value:.0f}) health({tile.health:.0f}) edu({tile.education:.0f}) - poll({tile.pollution:.0f}) crime({tile.crime:.0f})"
-        if tile.build == BuildKind.COM:
-            return f"Score {score:.0f}: land({tile.land_value:.0f}) edu({tile.education:.0f}) - poll({tile.pollution:.0f}) crime({tile.crime:.0f})"
-        if tile.build == BuildKind.IND:
-            return f"Score {score:.0f}: road({'Y' if tile.road_access else 'N'}) power({'Y' if tile.powered else 'N'}) - land({tile.land_value:.0f})"
-        return f"Score {score:.0f}"
-
-    def inspector_popup_rect(self):
-        g, c = self.game, self.game.city
-        if not c.selected:
-            return pygame.Rect(0, 0, 0, 0)
-        sx, sy = g.tile_screen(*c.selected)
-        width, height = 390, 136
-        view_right = SCREEN_W - SIDEBAR_W
-        x = sx + 24
-        if x + width > view_right - 12:
-            x = sx - width - 24
-        y = sy - height - 18
-        if y < TOPBAR_H + 10:
-            y = sy + 22
-        x = int(clamp(x, 12, view_right - width - 12))
-        y = int(clamp(y, TOPBAR_H + 10, SCREEN_H - height - 12))
-        return pygame.Rect(x, y, width, height)
-
-    def inspector_close_rect(self):
-        rect = self.inspector_popup_rect()
-        return pygame.Rect(rect.right - 28, rect.y + 8, 20, 20)
-
-    def draw_inspector_popup(self):
-        g, c = self.game, self.game.city
-        if not c.selected:
-            return
-        rect = self.inspector_popup_rect()
-        pygame.draw.rect(g.screen, (18, 22, 27), rect, border_radius=7)
-        pygame.draw.rect(g.screen, (88, 100, 116), rect, 1, border_radius=7)
-        self.section_title("Inspector", rect.x + 12, rect.y + 10)
-        close = self.inspector_close_rect()
-        pygame.draw.rect(g.screen, PANEL_3, close, border_radius=4)
-        pygame.draw.rect(g.screen, (88, 100, 116), close, 1, border_radius=4)
-        x_label = g.small.render("x", True, MUTED)
-        g.screen.blit(x_label, x_label.get_rect(center=close.center))
-        x, y = rect.x + 12, rect.y + 36
-        lines = self.inspector_lines(c.selected)
-        for i, line in enumerate(lines):
-            self.text_line(line, x, y + i * 17, TEXT if i == 0 else MUTED)
-
-    def draw_minimap(self, x, y):
-        g, c = self.game, self.game.city
-        rect = self.minimap_rect()
-        x, y = rect.x, rect.y
-        title_rect = self.map_title_rect()
-        pygame.draw.rect(g.screen, ACCENT if self.map_menu_open else PANEL_2, title_rect, border_radius=5)
-        pygame.draw.rect(g.screen, (75, 86, 99), title_rect, 1, border_radius=5)
-        title_color = (15, 20, 25) if self.map_menu_open else TEXT
-        label = g.small.render("Map", True, title_color)
-        g.screen.blit(label, (title_rect.x + 8, title_rect.y + 4))
-        arrow = g.small.render("<", True, title_color)
-        g.screen.blit(arrow, (title_rect.right - 14, title_rect.y + 4))
-        pygame.draw.rect(g.screen, PANEL_2, (x - 2, y - 2, rect.width + 4, rect.height + 4))
-        sx = rect.width / c.width
-        sy = rect.height / c.height
-        for tx in range(c.width):
-            for ty in range(c.height):
-                color = self.minimap_tile_color(tx, ty)
-                pygame.draw.rect(g.screen, color, (x + tx * sx, y + ty * sy, max(1, sx), max(1, sy)))
-        self.draw_minimap_viewport(rect)
-
-    def minimap_tile_color(self, tx, ty):
-        c = self.game.city
-        tile = c.tiles[tx][ty]
-        if self.map_mode == MapMode.PIPES:
-            if tile.pipe:
-                return (65, 156, 218)
-            if tile.water:
-                return (35, 88, 125)
-            if tile.build != BuildKind.EMPTY:
-                return (88, 83, 66)
-            return (45, 63, 50)
-        if self.map_mode == MapMode.TRAFFIC:
-            if tile.build in ROAD_KINDS:
-                return heat_color(c.road_congestion(tx, ty))
-            if tile.build in ZONE_KINDS:
-                return (76, 70, 62)
-            return (38, 47, 45) if not tile.water else (31, 70, 94)
-        if self.map_mode == MapMode.LAND_VALUE:
-            if tile.build in ZONE_KINDS:
-                return heat_color(tile.land_value)
-            if tile.water:
-                return (31, 70, 94)
-            return (44, 54, 45)
-        return self.standard_minimap_color(tile)
-
-    def standard_minimap_color(self, tile):
-        color = (35, 88, 125) if tile.water else (58, 104, 61)
-        if tile.build == BuildKind.ROAD:
-            color = (88, 91, 96)
-        elif tile.build == BuildKind.BRIDGE:
-            color = (170, 146, 105)
-        elif tile.build == BuildKind.RAIL:
-            color = (82, 70, 58)
-        elif tile.build == BuildKind.RAIL_BRIDGE:
-            color = (145, 110, 72)
-        elif tile.build == BuildKind.RAIL_CROSSING:
-            color = (214, 198, 116)
-        elif tile.build == BuildKind.RAIL_STATION:
-            color = (170, 154, 122)
-        elif tile.build == BuildKind.RES:
-            color = GOOD
-        elif tile.build == BuildKind.COM:
-            color = ACCENT
-        elif tile.build == BuildKind.IND:
-            color = WARN
-        elif tile.build in SERVICE_KINDS:
-            color = (220, 220, 220)
-        elif tile.build == BuildKind.BURNING:
-            color = BAD
-        return color
-
-    def draw_minimap_viewport(self, rect):
-        g, c = self.game, self.game.city
-        view_right = SCREEN_W - SIDEBAR_W
-        corners = [
-            g.camera.screen_to_world(0, TOPBAR_H),
-            g.camera.screen_to_world(view_right, TOPBAR_H),
-            g.camera.screen_to_world(0, SCREEN_H),
-            g.camera.screen_to_world(view_right, SCREEN_H),
-        ]
-        min_x = clamp(min(x for x, _ in corners), 0, c.width - 1)
-        max_x = clamp(max(x for x, _ in corners), 0, c.width - 1)
-        min_y = clamp(min(y for _, y in corners), 0, c.height - 1)
-        max_y = clamp(max(y for _, y in corners), 0, c.height - 1)
-        sx = rect.width / c.width
-        sy = rect.height / c.height
-        view_rect = pygame.Rect(
-            rect.x + int(min_x * sx),
-            rect.y + int(min_y * sy),
-            max(4, int((max_x - min_x + 1) * sx)),
-            max(4, int((max_y - min_y + 1) * sy)),
-        )
-        view_rect.clamp_ip(rect)
-        pygame.draw.rect(g.screen, (255, 245, 170), view_rect, 2)
-        pygame.draw.rect(g.screen, (20, 24, 28), rect, 1)
-
-    def draw_graphs(self, x, y):
-        g, c = self.game, self.game.city
-        self.section_title("Trend", x, y - 20)
-        rect = pygame.Rect(x, y, 112, 112)
-        pygame.draw.rect(g.screen, PANEL_2, rect)
-        pygame.draw.rect(g.screen, (65, 74, 84), rect, 1)
-        series = [
-            ("population", GOOD),
-            ("money", ACCENT),
-            ("mood", WARN),
-            ("pollution", BAD),
-        ]
-        for key, color in series:
-            vals = c.graphs[key]
-            if len(vals) < 2:
-                continue
-            lo, hi = min(vals), max(vals)
-            if lo == hi:
-                hi += 1
-            points = []
-            for i, val in enumerate(vals):
-                px = rect.x + int(i / max(1, len(vals) - 1) * (rect.width - 4)) + 2
-                py = rect.bottom - 3 - int((val - lo) / (hi - lo) * (rect.height - 8))
-                points.append((px, py))
-            pygame.draw.lines(g.screen, color, False, points, 2)
-
-    def draw_messages(self):
-        g = self.game
-        y = TOPBAR_H + 10
-        for m in self.game.city.messages[:4]:
-            surf = g.font.render(m.text, True, m.color)
-            pad = 8
-            rect = pygame.Rect(14, y, surf.get_width() + pad * 2, 28)
-            pygame.draw.rect(g.screen, (18, 22, 27), rect, border_radius=5)
-            pygame.draw.rect(g.screen, (65, 72, 82), rect, 1, border_radius=5)
-            g.screen.blit(surf, (rect.x + pad, rect.y + 6))
-            y += 34
-
-    def draw_tooltip(self):
-        g = self.game
-        mx, my = pygame.mouse.get_pos()
-        if mx >= SCREEN_W - SIDEBAR_W or my < TOPBAR_H:
-            return
-        if not g.hover and not g.dragging_path and not g.dragging_zone:
-            return
-        if g.dragging_path:
-            tiles = len(g.path_plan)
-            text = f"{g.tool.value} path {tiles} tiles ${g.path_cost}"
-            if g.path_error:
-                text = g.path_error
-        elif g.dragging_zone:
-            tiles = len(g.zone_plan)
-            text = f"{g.tool.value} area {tiles} tiles ${g.zone_cost}"
-            if g.zone_error:
-                text = g.zone_error
-        elif g.tool in TOOL_BUILD:
-            price = COST.get(g.tool, 0)
-            fw, fh = FOOTPRINTS[TOOL_BUILD[g.tool]]
-            size = f" {fw}x{fh}" if (fw, fh) != (1, 1) else ""
-            text = f"{g.tool.value}{size} ${price}"
-        else:
-            text = "Inspect"
-        surf = g.small.render(text, True, TEXT)
-        rect = pygame.Rect(mx + 14, my + 16, surf.get_width() + 12, 24)
-        pygame.draw.rect(g.screen, (18, 22, 27), rect, border_radius=5)
-        pygame.draw.rect(g.screen, (74, 83, 96), rect, 1, border_radius=5)
-        g.screen.blit(surf, (rect.x + 6, rect.y + 5))
-
-
 def darken(color, factor):
     return tuple(max(0, min(255, int(c * factor))) for c in color)
 
@@ -3045,6 +3181,14 @@ def heat_color(value):
         int(WARN[2] + (GOOD[2] - WARN[2]) * t),
     )
 
+
+def risk_color(value):
+    return heat_color(100 - value)
+
+
+
+from camera import Camera
+from ui import UI
 
 def main():
     Game().run()
