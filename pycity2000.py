@@ -1759,7 +1759,8 @@ class City:
             pressure = self.zone_growth_pressure(t, building)
             score = self.zone_score(t)
             can_grow = t.powered and t.watered and t.road_access
-            if can_grow and pressure >= 70 and score >= 55 and t.level < 5:
+            score_threshold = 50 if t.build == BuildKind.COM else 55
+            if can_grow and pressure >= 70 and score >= score_threshold and t.level < 5:
                 t.level += 1
             elif (pressure <= -25 or score < 25) and t.level > 1:
                 t.level -= 1
